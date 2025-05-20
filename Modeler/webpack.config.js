@@ -9,7 +9,7 @@ module.exports = (env, argv) => {
   return {
     mode,
     entry: {
-      viewer: './example/src/viewer.js',
+      index: './example/src/index.js',
       modeler: './example/src/modeler.js'
     },
     output: {

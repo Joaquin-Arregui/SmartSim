@@ -10,11 +10,6 @@ import { debounce } from 'min-dash';
 import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
 import fileOpen from 'file-open';
 import download from 'downloadjs';
-import exampleXML from '../resources/example.bpmn';
-import model1XML from '../resources/model1.bpmn';
-import model2XML from '../resources/model2.bpmn';
-import model3XML from '../resources/model3.bpmn';
-import model4XML from '../resources/model4.bpmn';
 import $ from 'jquery';
 
 import resizeAllModule from '../../lib/resize-all-rules';
@@ -75,27 +70,26 @@ $(function() {
     }
   }
 
-  async function createNewDiagram(modelFile) {
-    switch (modelFile) {
-      case "example":
-        openDiagram(exampleXML);
-        break;
-      case "model1":
-        openDiagram(model1XML);
-        break;
-      case "model2":
-        openDiagram(model2XML);
-        break;
-      case "model3":
-        openDiagram(model3XML);
-        break;
-      case "model4":
-        openDiagram(model4XML);
-        break;
-      default:
-        openDiagram(exampleXML);
+  (async () => {
+  const storedXml = sessionStorage.getItem('importedDiagram');
+
+  if (storedXml) {
+    try {
+      await openDiagram(storedXml);
+      sessionStorage.removeItem('importedDiagram');
+      return;
+    } catch (err) {
+      console.error('No se pudo cargar el diagrama:', err);
     }
   }
+
+  try {
+    await bpmnModeler.createDiagram();
+  } catch (err) {
+    console.error('No se pudo cargar el diagrama inicial:', err);
+  }
+
+})();
 
   function registerFileDrop(container, callback) {
     function handleFileSelect(e) {
@@ -147,9 +141,6 @@ $(function() {
     var urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(param);
   }
-  var modelFile = getQueryParam('model') || 'example';
-
-  createNewDiagram(modelFile);
   registerFileDrop($('#canvas'), openDiagram);
 
   function downloadDiagram() {
