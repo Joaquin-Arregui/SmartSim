@@ -5,6 +5,7 @@ import CollaborationProps from '../model/parts/CollaborationProps';
 import LaneProps from '../model/parts/LaneProps';
 import ParticipantProps from '../model/parts/ParticipantProps';
 import ParticipantWithoutLaneProps from '../model/parts/ParticipantWithoutLaneProps';
+import InterventionProps from '../model/parts/InterventionProps';
 
 import { is } from 'bpmn-js/lib/util/ModelUtil';
 
@@ -29,6 +30,7 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         }
       } else if (is(element, 'bpmn:Process')) {
         groups.push(createModelGroup(element, translate));
+        groups.push(createInterventionGroup(element, translate));
       } else if ( is(element, 'bpmn:Collaboration')) {
         groups.push(createCollaborationGroup(element, translate));
       } else if ( is(element, 'bpmn:Lane')) {
@@ -84,6 +86,17 @@ function createModelGroup(element, translate) {
   };
 
   return modelGroup;
+}
+
+function createInterventionGroup(element, translate) {
+  const interventionGroup = {
+    id: 'intervention',
+    label: translate('Intervention properties'),
+    entries: InterventionProps(element),
+    tooltip: translate('Configure intervention-related settings')
+  };
+
+  return interventionGroup;
 }
 
 function createCollaborationGroup(element, translate) {

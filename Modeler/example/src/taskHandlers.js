@@ -240,7 +240,13 @@ function getAllRelevantTasks(bpmnModeler) {
       userWithRole: Object.entries(businessObject.userWithRole || {}).map(([role, users]) => ({
         role,
         users: Array.isArray(users) ? users : [users]
-    })),    
+      })),
+      addUser: Array.isArray(businessObject.addUser)
+        ? businessObject.addUser.map(({ key, value }) => ({ key, value }))
+        : [],
+      deleteUser: Array.isArray(businessObject.deleteUser)
+        ? businessObject.deleteUser.map(({ key, value }) => ({ key, value }))
+        : [],
       type: type,
       loopParameter: loopParameter,
       loopCharacteristics: loopCharacteristics,
@@ -342,9 +348,29 @@ function exportToEsper(bpmnModeler) {
                 .filter((entry) => entry !== '')
                 .join(', ')
             : '{}';
-        
-          content += `userWithRole={${userWithRole}}]\n`;
-        } else if (element.type === 'bpmn:Participant') {
+          content += `userWithRole={${userWithRole}}, `;
+
+  const interventions = [];
+
+  if (Array.isArray(element.addUser)) {
+    element.addUser.forEach(pair => {
+      if (pair.key && pair.value) {
+        interventions.push(`"${pair.key}": "+${pair.value}"`);
+      }
+    });
+  }
+
+  if (Array.isArray(element.deleteUser)) {
+    element.deleteUser.forEach(pair => {
+      if (pair.key && pair.value) {
+        interventions.push(`"${pair.key}": "-${pair.value}"`);
+      }
+    });
+  }
+
+  const userIntervention = interventions.length > 0 ? interventions.join(', ') : '';
+  content += `userIntervention={${userIntervention}}]\n`;
+}else if (element.type === 'bpmn:Participant') {
           const userWithoutRole = Array.isArray(element.userWithoutRole)
             ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
             : '""';
