@@ -17,7 +17,19 @@
             "name": "instance",
             "isAttr": true,
             "type": "Integer"
-          }
+          },
+        {
+          "name": "addUser",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePair"
+        },
+        {
+          "name": "deleteUser",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePair"
+        }
         ]
       }
     ]

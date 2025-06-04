@@ -33,6 +33,7 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         groups.push(createInterventionGroup(element, translate));
       } else if ( is(element, 'bpmn:Collaboration')) {
         groups.push(createCollaborationGroup(element, translate));
+        groups.push(createInterventionGroup(element, translate));
       } else if ( is(element, 'bpmn:Lane')) {
         groups.push(createLaneGroup(element, translate));
       } else if (is(element, 'bpmn:Participant')) {

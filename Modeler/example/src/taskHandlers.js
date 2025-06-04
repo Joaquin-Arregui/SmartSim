@@ -315,6 +315,28 @@ function exportToEsper(bpmnModeler) {
           content += `subTask="${subTasks}"]\n`;
         } else if (element.type === 'bpmn:Collaboration') {
           content += `instances=${element.Instances}]\n`;
+
+          const interventions = [];
+
+  if (Array.isArray(element.addUser)) {
+    element.addUser.forEach(pair => {
+      if (pair.key && pair.value) {
+        interventions.push(`"${pair.key}": "+${pair.value}"`);
+      }
+    });
+  }
+
+  if (Array.isArray(element.deleteUser)) {
+    element.deleteUser.forEach(pair => {
+      if (pair.key && pair.value) {
+        interventions.push(`"${pair.key}": "-${pair.value}"`);
+      }
+    });
+  }
+
+  const userIntervention = interventions.length > 0 ? interventions.join(', ') : '';
+  content += `userIntervention={${userIntervention}}]\n`;
+  
         } else if (element.type === 'bpmn:Lane') {
           const userWithoutRole = Array.isArray(element.userWithoutRole)
             ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
