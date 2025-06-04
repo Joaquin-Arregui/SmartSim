@@ -314,7 +314,7 @@ function exportToEsper(bpmnModeler) {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
           content += `subTask="${subTasks}"]\n`;
         } else if (element.type === 'bpmn:Collaboration') {
-          content += `instances=${element.Instances}]\n`;
+          content += `instances=${element.Instances}\n`;
 
           const interventions = [];
 
@@ -336,7 +336,7 @@ function exportToEsper(bpmnModeler) {
 
   const userIntervention = interventions.length > 0 ? interventions.join(', ') : '';
   content += `userIntervention={${userIntervention}}]\n`;
-  
+
         } else if (element.type === 'bpmn:Lane') {
           const userWithoutRole = Array.isArray(element.userWithoutRole)
             ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
