@@ -2,11 +2,17 @@ def sendTask(elements, element, script):
     from simulator.simulationFunctions.generateFunction import generateFunction
     functionStr = f"""
 def {element.id_bpmn}(env, name):
+    def getTime(env, initial, intervention):
+        res = initial
+        for interventionTime, newValue in intervention.items():
+            if env.now >= interventionTime:
+                res = newValue
+        return res
     def executeTask(env, TaskName, name, execution):
         start_standBy = env.now
         possibleUsers = {element.userTask}
         if possibleUsers is None:
-            possibleUsers = userPool
+            possibleUsers = getUserPool(env)
         possibleUsers = resolve_possible_users(possibleUsers, TaskName)
         available_users = [user for user in possibleUsers if user_resources[user].count < user_resources[user].capacity]
         while not available_users:
@@ -18,7 +24,7 @@ def {element.id_bpmn}(env, name):
             request = user_resources[userTask].request()
             yield request
             try:
-                time = resolve_task_time('{element.id_bpmn}', {element.maximumTime}, {element.minimumTime}, userTask)
+                time = resolve_task_time('{element.id_bpmn}', getTime(env, {element.maximumTime}, {element.maximumTimeIntervention}), getTime(env, {element.minimumTime}, {element.minimumTimeIntervention}), userTask)
                 if env.now > start_standBy: 
                     simulationResults[name].append(
 f'''

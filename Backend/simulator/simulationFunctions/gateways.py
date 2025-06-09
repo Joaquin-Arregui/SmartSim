@@ -1,19 +1,20 @@
 def getPercentOfBranches(elements, gateway):
     possibleElements = {}
-    none_elements = []
     for element in elements.values():
         if type(element).__name__ == "BPMNSequenceFlow" and element.superElement == gateway:
             if element.percentageOfBranches is None:
-                possibleElements[element.subElement] = None
-                none_elements.append(element.subElement)
+                percentages = {0: None}
             else:
-                possibleElements[element.subElement] = element.percentageOfBranches / 100
+                percentages = {0: element.percentageOfBranches}
+            percentages.update(element.percentageIntervention)
+            possibleElements[element.subElement] = percentages
+    '''
     total_assigned_percent = sum([v for v in possibleElements.values() if v is not None])
     remaining_percent = 1 - total_assigned_percent
     if none_elements:
         equal_percent = remaining_percent / len(none_elements)
         for sub_element in none_elements:
-            possibleElements[sub_element] = equal_percent
+            possibleElements[sub_element] = equal_percent'''
     return list(possibleElements.keys()), list(possibleElements.values())
 
 def exclusiveGateway(elements, element, script):
@@ -21,7 +22,17 @@ def exclusiveGateway(elements, element, script):
     possibleElements, percents = getPercentOfBranches(elements, element.id_bpmn)
     functionStr = f"""
 def {element.id_bpmn}(env, name):
-    selectedElement = random.choices({possibleElements}, {percents})[0]
+    percents = []
+    for branch in {percents}:
+        percent = None
+        for interventionTime, newPercentage in branch.items():
+            if env.now >= interventionTime:
+                percent = newPercentage / 100
+        percents.append(percent)
+    totalPercentage = sum(x for x in percents if x is not None)
+    nones = percents.count(None)
+    percents = [((1-totalPercentage)/nones) if x is None else x for x in percents]
+    selectedElement = random.choices({possibleElements}, percents)[0]
     simulationResults[name].append(
 f'''
         <event>
@@ -72,10 +83,17 @@ def inclusiveGateway(elements, element, script):
     functionStr = f"""
 def {element.id_bpmn}(env, name):
     elements = {possibleElements}
-    percents = {percents}
-    selectedElements = [element for element, percent in zip(elements, percents) if random.random() < percent]
-    if not selectedElements:
-        selectedElements = random.choices(elements, weights=percents, k=1)
+    percents = []
+    for branch in {percents}:
+        percent = None
+        for interventionTime, newPercentage in branch.items():
+            if env.now >= interventionTime:
+                percent = newPercentage / 100
+        percents.append(percent)
+    percents = [0.5 if x is None else x for x in percents]
+    selectedElements = []
+    while not selectedElements:
+        selectedElements = [element for element, percent in zip(elements, percents) if random.random() < percent]
     strSelectedElements = ", ".join(selectedElements)
     simulationResults[name].append(
 f'''

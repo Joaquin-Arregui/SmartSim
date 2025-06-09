@@ -22,6 +22,7 @@ userPool = userWithRole + userWithoutRole
 user_task_count = {{}}
 user_assignments = {{user: 0 for user in userPool}}
 user_resources = {{}}
+userIntervention = {elements["userInterventions"][process]}
 message_events = []
 generatedData = {elements['generatedData']}
 requiredData = {elements['requiredData']}
@@ -34,6 +35,24 @@ gatewayProcessed = set()
 for i in range(nInstances):
     for dataObject in defaultData:
         data.append((dataObject, f'Instance {{i + 1}}'))
+
+def getUserPool(env):
+    users = userPool.copy()
+    for interventionTime, intervention in userIntervention.items():
+        if env.now >= interventionTime:
+            for i in intervention:
+                if i[0] == "+":
+                    users.append(i[1:])
+                    if not i[1:] in userWithoutRole:
+                        userWithoutRole.append(i[1:])
+                    if not i[1:] in user_resources.keys():
+                        user_resources[i[1:]] = simpy.Resource(env, capacity=1)
+                    if not i[1:] in user_assignments.keys():
+                        user_assignments[i[1:]] = 0
+                elif i[0] == "-":
+                    if i[1:] in users:
+                        users.remove(i[1:])
+    return users
 
 def resolve_task_time(task_name, max_time, min_time, user):
     if user not in user_task_count:

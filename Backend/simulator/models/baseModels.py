@@ -33,11 +33,12 @@ class BPMNLane(BPMNElement):
         self.contained_elements = contained_elements
 
 class BPMNSequenceFlow(BPMNElement):
-    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, superElement: BPMNElement, subElement: BPMNElement, percentageOfBranches: float = None):
+    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, superElement: BPMNElement, subElement: BPMNElement, percentageOfBranches: float, percentageIntervention: Dict[int, float]):
         super().__init__(name, id_bpmn, bpmn_type)
         self.superElement = superElement
         self.subElement = subElement
         self.percentageOfBranches = percentageOfBranches
+        self.percentageIntervention = percentageIntervention
 
 class BPMNDataInputAssociation(BPMNElement):
     def __init__(self, name: str, id_bpmn: str, bpmn_type: str, superElement: BPMNElement, subElement: BPMNElement):
