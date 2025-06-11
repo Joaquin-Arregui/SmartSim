@@ -178,7 +178,6 @@ function userWithoutRoleFunction(props) {
       return [];
     }
     return element.businessObject.userWithoutRole || [];
-    console.log(element.businessObject.userWithoutRole);
   };
 
   const updateUserWithoutRole = (index, value) => {
@@ -189,7 +188,6 @@ function userWithoutRoleFunction(props) {
     modeling.updateProperties(element, {
       userWithoutRole: updatedUserWithoutRoleList
     });
-    console.log(element.businessObject.userWithoutRole);
   };
 
   const removeUserWithoutRole = (index) => {
@@ -252,20 +250,20 @@ function userWithRoleFunction(props) {
   const moddle = useService('moddle'); // <--- Importante
 
   const getuserWithRole = () => {
-    if (!element || !element.businessObject) return [];
+  if (!element || !element.businessObject) return [];
 
-    if (element.businessObject.participants) {
-        const firstParticipant = element.businessObject.participants[0];
-        if (firstParticipant?.processRef) {
-            return Array.isArray(firstParticipant.processRef.userWithRole) 
-                ? firstParticipant.processRef.userWithRole 
-                : [];
-        }
-    }
-
-    return Array.isArray(element.businessObject.userWithRole) 
-        ? element.businessObject.userWithRole 
+  if (element.businessObject.participants) {
+    const firstParticipant = element.businessObject.participants[0];
+    if (firstParticipant?.processRef) {
+      return Array.isArray(firstParticipant.processRef.userWithRole) 
+        ? firstParticipant.processRef.userWithRole 
         : [];
+    }
+  }
+
+  return Array.isArray(element.businessObject.userWithRole) 
+    ? element.businessObject.userWithRole 
+    : [];
 };
 
   const setuserWithRole = (updatedArray) => {
@@ -287,18 +285,21 @@ function userWithRoleFunction(props) {
 
   // Añadir un nuevo KeyValuePair
   const addRole = () => {
-    const current = getuserWithRole();
+  const current = getuserWithRole();
 
-    // Crear la instancia con moddle
-    const newKeyValuePair = moddle.create('model:KeyValuePair', {
-      key: `role${current.length + 1}`,
-      value: ''
-    });
+  const newKeyValuePair = moddle.create('model:KeyValuePair', {
+    key: `role${current.length + 1}`,
+    value: ''
+  });
 
-    // Agregamos la instancia al array
-    const updated = [ ...current, newKeyValuePair ];
-    setuserWithRole(updated);
-  };
+  // Opcionalmente clonar si sospechas de referencias compartidas
+  const cloned = current.map(pair =>
+    moddle.create('model:KeyValuePair', { key: pair.key, value: pair.value })
+  );
+
+  const updated = [ ...cloned, newKeyValuePair ];
+  setuserWithRole(updated);
+};
 
   // Cambiar la key
   const setRoleName = (index, newKey) => {

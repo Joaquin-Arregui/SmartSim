@@ -314,9 +314,9 @@ function exportToEsper(bpmnModeler) {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
           content += `subTask="${subTasks}"]\n`;
         } else if (element.type === 'bpmn:Collaboration') {
-          content += `instances=${element.Instances}\n`;
+  content += `instances=${element.Instances},`;
 
-          const interventions = [];
+  const interventions = [];
 
   if (Array.isArray(element.addUser)) {
     element.addUser.forEach(pair => {
@@ -334,19 +334,11 @@ function exportToEsper(bpmnModeler) {
     });
   }
 
-  const userIntervention = interventions.length > 0 ? interventions.join(', ') : '';
-  content += `userIntervention={${userIntervention}}]\n`;
+            const userIntervention = interventions.length > 0
+    ? interventions.join(', ')
+    : '';
 
-        } else if (element.type === 'bpmn:Lane') {
-          const userWithoutRole = Array.isArray(element.userWithoutRole)
-            ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
-            : '""';
-          
-          const containedElements = element.containedElements && element.containedElements.length > 0
-            ? element.containedElements.map(el => `"${el}"`).join(', ')
-            : '""';
-          
-          content += `userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}]]\n`;
+      content += ` userIntervention={${userIntervention}}]\n`;
         } else if (element.type === 'bpmn:Process') {
           content += `instances=${element.Instances}, `;
           content += `frequency=${element.Frequency}, `;
@@ -357,20 +349,24 @@ function exportToEsper(bpmnModeler) {
           content += `userWithoutRole=[${userWithoutRole}], `;
         
           const userWithRole = element.userWithRole
-            ? element.userWithRole
-                .map((pair) => {
-                  if (!pair.key || !pair.value) {
-                    console.warn('Formato inesperado en ModdleElement:', pair);
-                    return '';
-                  }
-                  const role = pair.key;
-                  const users = pair.value.split(',').map((u) => u.trim());
-                  return `"${role}": [${users.map((u) => `"${u}"`).join(', ')}]`;
-                })
-                .filter((entry) => entry !== '')
-                .join(', ')
-            : '{}';
-          content += `userWithRole={${userWithRole}}, `;
+  ? element.userWithRole
+      .map((pair) => {
+        
+        if (!pair.users || !Array.isArray(pair.users)) {
+          console.warn('Formato inesperado en users:', pair);
+          return '';
+        }
+        const role = pair.users.map((userPair) => `${userPair.key}`).join(', ');
+        const users = pair.users.map((userPair) => `"${userPair.value}"`).join(', ');
+        return `"${role}": [${users}]`;
+      })
+      .filter((entry) => entry !== '')
+      .join(', ')
+  : '{}';
+
+console.log(`userWithRole={${userWithRole}}, `);
+content += `userWithRole={${userWithRole}}, `;
+
 
   const interventions = [];
 
@@ -393,16 +389,40 @@ function exportToEsper(bpmnModeler) {
   const userIntervention = interventions.length > 0 ? interventions.join(', ') : '';
   content += `userIntervention={${userIntervention}}]\n`;
 }else if (element.type === 'bpmn:Participant') {
-          const userWithoutRole = Array.isArray(element.userWithoutRole)
-            ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
-            : '""';
-        
-          const containedElements = Array.isArray(element.containedElements) 
-            ? element.containedElements.map(el => `"${el}"`).join(', ')
-            : '""';
-          
-          content += `frequency=${element.Frequency}, userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}]]\n`;
-      }  else {
+  const userWithoutRole = Array.isArray(element.userWithoutRole)
+    ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
+    : '""';
+
+  const containedElements = Array.isArray(element.containedElements) 
+    ? element.containedElements.map(el => `"${el}"`).join(', ')
+    : '""';
+
+  content += `frequency=${element.Frequency}, userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}],`;
+
+  const interventions = [];
+
+  if (Array.isArray(element.addUser)) {
+    element.addUser.forEach(pair => {
+      if (pair.key && pair.value) {
+        interventions.push(`"${pair.key}": "+${pair.value}"`);
+      }
+    });
+  }
+
+  if (Array.isArray(element.deleteUser)) {
+    element.deleteUser.forEach(pair => {
+      if (pair.key && pair.value) {
+        interventions.push(`"${pair.key}": "-${pair.value}"`);
+      }
+    });
+  }
+
+  const userIntervention = interventions.length > 0
+    ? interventions.join(', ')
+    : '';
+
+  content += ` userIntervention={${userIntervention}}]\n`;
+    } else {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
           content += `subTask="${subTasks}"]\n`;
         }

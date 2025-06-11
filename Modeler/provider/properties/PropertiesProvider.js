@@ -43,6 +43,7 @@ export default function PropertiesProvider(propertiesPanel, translate) {
     
         if (!lanes || lanes.length === 0) {
             groups.push(createParticipantWithoutLaneGroup(element, translate));
+            groups.push(createInterventionGroup(element, translate));
         } else {
             groups.push(createParticipantGroup(element, translate));
         }
