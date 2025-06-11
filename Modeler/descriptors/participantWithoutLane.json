@@ -23,9 +23,70 @@
             "isAttr": false,
             "isMany": true,
             "type": "String"
-          }          
+          },
+        {
+          "name": "addUser",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePairAddUser",
+          "xml": {
+            "serialize": { "element": "addUser" },
+            "deserialize": { "element": "addUser" }
+          },
+          "xml": { "serialize": "property-as-element" }
+        },
+        {
+          "name": "deleteUser",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePairDeleteUser",
+          "xml": {
+            "serialize": { "element": "deleteUser" },
+            "deserialize": { "element": "deleteUser" }
+          },
+          "xml": { "serialize": "property-as-element" }
+        }          
         ]
-      }
+      },
+    {
+      "name": "KeyValuePairAddUser",
+      "properties": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "KeyValuePair",
+      "properties": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "KeyValuePairDeleteUser",
+      "properties": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "type": "String"
+        }
+      ]
+    }
     ]
   }
   
