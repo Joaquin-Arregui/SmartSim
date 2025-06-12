@@ -247,6 +247,12 @@ function getAllRelevantTasks(bpmnModeler) {
       deleteUser: Array.isArray(businessObject.deleteUser)
         ? businessObject.deleteUser.map(({ key, value }) => ({ key, value }))
         : [],
+      minimumTimeIntervention: Array.isArray(businessObject.minimumTimeIntervention)
+        ? businessObject.minimumTimeIntervention.map(({ key, value }) => ({ key, value }))
+        : [],
+      maximumTimeIntervention: Array.isArray(businessObject.maximumTimeIntervention)
+        ? businessObject.maximumTimeIntervention.map(({ key, value }) => ({ key, value }))
+        : [],
       type: type,
       loopParameter: loopParameter,
       loopCharacteristics: loopCharacteristics,
@@ -297,22 +303,62 @@ function exportToEsper(bpmnModeler) {
 
           content += `superElement="${superElement}", `;
           content += `subElement="${subElement}"]\n`;
-        } else if (element.type === 'bpmn:Task' || element.type === 'bpmn:UserTask' || element.type === 'bpmn:ManualTask'
-          || element.type === 'bpmn:SendTask' || element.type === 'bpmn:ReceiveTask' || element.type === 'bpmn:BusinessRuleTask'
-          || element.type === 'bpmn:ScriptTask' || element.type === 'bpmn:CallActivity' || element.type === 'bpmn:ServiceTask'
+        } else if (
+          element.type === 'bpmn:Task' || 
+          element.type === 'bpmn:UserTask' || 
+          element.type === 'bpmn:ManualTask' ||
+          element.type === 'bpmn:SendTask' || 
+          element.type === 'bpmn:ReceiveTask' || 
+          element.type === 'bpmn:BusinessRuleTask' ||
+          element.type === 'bpmn:ScriptTask' || 
+          element.type === 'bpmn:CallActivity' || 
+          element.type === 'bpmn:ServiceTask'
         ) {
           content += `userTask="${element.UserTask || '""'}", `;
           content += `numberOfExecutions=${element.NumberOfExecutions}, `;
           content += `minimumTime=${element.MinimumTime}, `;
           content += `maximumTime=${element.MaximumTime}, `;
-          if(element.loopParameter !== 'undefined'){
+          
+          if (element.loopParameter !== 'undefined') {
             content += `loopParameter={"${element.loopParameter}":${element.AdditionalIntegerParameter}}, `;
           }
+          
           if (element.loopCharacteristics?.isSequential !== undefined) {
             content += `multiInstanceType="${element.loopCharacteristics.isSequential ? 'true' : 'false'}", `;
-        }               
+          }
+
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
-          content += `subTask="${subTasks}"]\n`;
+          content += `subTask="${subTasks}", `;
+
+          // minimumTimeIntervention
+          let minInterventions = [];
+
+          if (Array.isArray(element.minimumTimeIntervention)) {
+            element.minimumTimeIntervention.forEach(pair => {
+              if (pair.key && pair.value) {
+                minInterventions.push(`"${pair.key}": "${pair.value}"`);
+              }
+            });
+          }
+
+          const minInterventionStr = minInterventions.length > 0 ? minInterventions.join(', ') : '';
+          content += `minimumTimeIntervention={${minInterventionStr}}, `;
+
+          // maximumTimeIntervention
+          let maxInterventions = [];
+
+          if (Array.isArray(element.maximumTimeIntervention)) {
+            element.maximumTimeIntervention.forEach(pair => {
+              if (pair.key && pair.value) {
+                maxInterventions.push(`"${pair.key}": "${pair.value}"`);
+              }
+            });
+          }
+
+          const maxInterventionStr = maxInterventions.length > 0 ? maxInterventions.join(', ') : '';
+          content += `maximumTimeIntervention={${maxInterventionStr}}]\n`;
+
+          
         } else if (element.type === 'bpmn:Collaboration') {
   content += `instances=${element.Instances},`;
 

@@ -12,7 +12,13 @@
       "extends": [
         "bpmn:ManualTask",
         "bpmn:UserTask",
-        "bpmn:Task"
+        "bpmn:Task",
+        "bpmn:SendTask",
+        "bpmn:ReceiveTask",
+        "bpmn:BusinessRuleTask",
+        "bpmn:ScriptTask",
+        "bpmn:CallActivity",
+        "bpmn:ServiceTask"
       ],
       "properties": [
         {
@@ -46,6 +52,52 @@
           "name": "AdditionalIntegerParameter",
           "isAttr": true,
           "type": "Integer"
+        },
+        {
+          "name": "minimumTimeIntervention",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePairMinimumTimeIntervention",
+          "xml": {
+            "serialize": { "element": "minimumTimeIntervention" },
+            "deserialize": { "element": "minimumTimeIntervention" }
+          }
+        },
+        {
+          "name": "maximumTimeIntervention",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePairMaximumTimeIntervention",
+          "xml": {
+            "serialize": { "element": "maximumTimeIntervention" },
+            "deserialize": { "element": "maximumTimeIntervention" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "KeyValuePairMinimumTimeIntervention",
+      "properties": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "KeyValuePairMaximumTimeIntervention",
+      "properties": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "type": "String"
         }
       ]
     }

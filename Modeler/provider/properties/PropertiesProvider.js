@@ -6,6 +6,7 @@ import LaneProps from '../model/parts/LaneProps';
 import ParticipantProps from '../model/parts/ParticipantProps';
 import ParticipantWithoutLaneProps from '../model/parts/ParticipantWithoutLaneProps';
 import InterventionProps from '../model/parts/InterventionProps';
+import InterventionTaskProps from '../model/parts/InterventionTaskProps';
 
 import { is } from 'bpmn-js/lib/util/ModelUtil';
 
@@ -22,6 +23,7 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         || is(element, 'bpmn:SendTask') || is(element, 'bpmn:ReceiveTask')
         || is(element, 'bpmn:ServiceTask'))) {
         groups.push(createUserGroup(element, translate));
+        groups.push(createInterventionTaskGroup(element, translate));
       } else if (is(element, 'bpmn:SequenceFlow')) {
         const lengthSubTask = element.businessObject.sourceRef.outgoing.length;
         const sourceElement = element.businessObject.sourceRef;
@@ -66,6 +68,17 @@ function createUserGroup(element, translate) {
   };
 
   return userGroup;
+}
+
+function createInterventionTaskGroup(element, translate) {
+  const interventionTaskGroup = {
+    id: 'intervention',
+    label: translate('Intervention task properties'),
+    entries: InterventionTaskProps(element),
+    tooltip: translate('Configure intervention-related task settings')
+  };
+
+  return interventionTaskGroup;
 }
 
 function createSequenceFlowGroup(element, translate) {
