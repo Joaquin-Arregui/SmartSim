@@ -7,6 +7,8 @@ import ParticipantProps from '../model/parts/ParticipantProps';
 import ParticipantWithoutLaneProps from '../model/parts/ParticipantWithoutLaneProps';
 import InterventionProps from '../model/parts/InterventionProps';
 import InterventionTaskProps from '../model/parts/InterventionTaskProps';
+import percentageInterventionProps from '../model/parts/percentageInterventionProps';
+
 
 import { is } from 'bpmn-js/lib/util/ModelUtil';
 
@@ -29,6 +31,7 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         const sourceElement = element.businessObject.sourceRef;
         if (sourceElement && is(sourceElement, 'bpmn:Gateway') && lengthSubTask > 1) {
           groups.push(createSequenceFlowGroup(element, translate));
+          groups.push(createPercentageInterventionGroup(element, translate));
         }
       } else if (is(element, 'bpmn:Process')) {
         groups.push(createModelGroup(element, translate));
@@ -90,6 +93,17 @@ function createSequenceFlowGroup(element, translate) {
   };
 
   return sequenceFlowGroup;
+}
+
+function createPercentageInterventionGroup(element, translate) {
+  const percentageInterventionGroup = {
+    id: 'percentageIntervention',
+    label: translate('Percentage Intervention properties'),
+    entries: percentageInterventionProps(element),
+    tooltip: translate('Configure intervention-related percentage settings')
+  };
+
+  return percentageInterventionGroup;
 }
 
 function createModelGroup(element, translate) {

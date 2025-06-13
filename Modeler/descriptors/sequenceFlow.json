@@ -17,6 +17,29 @@
           "name": "percentageOfBranches",
           "isAttr": true,
           "type": "Integer"
+        },
+        {
+          "name": "percentageIntervention",
+          "isAttr": false,
+          "isMany": true,
+          "type": "KeyValuePairPercentageIntervention",
+          "xml": {
+            "serialize": { "element": "percentageIntervention" },
+            "deserialize": { "element": "percentageIntervention" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "KeyValuePairPercentageIntervention",
+      "properties": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "type": "String"
         }
       ]
     }

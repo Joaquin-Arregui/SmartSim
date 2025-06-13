@@ -253,6 +253,9 @@ function getAllRelevantTasks(bpmnModeler) {
       maximumTimeIntervention: Array.isArray(businessObject.maximumTimeIntervention)
         ? businessObject.maximumTimeIntervention.map(({ key, value }) => ({ key, value }))
         : [],
+      percentageIntervention: Array.isArray(businessObject.percentageIntervention)
+        ? businessObject.percentageIntervention.map(({ key, value }) => ({ key, value }))
+        : [],
       type: type,
       loopParameter: loopParameter,
       loopCharacteristics: loopCharacteristics,
@@ -294,6 +297,20 @@ function exportToEsper(bpmnModeler) {
 
             if (element.PercentageOfBranches && element.PercentageOfBranches !== 'N/A') {
               content += `percentageOfBranches=${element.PercentageOfBranches}, `;
+          // percentageIntervention
+          let percentageInterventions = [];
+
+          if (Array.isArray(element.percentageIntervention)) {
+            element.percentageIntervention.forEach(pair => {
+              if (pair.key && pair.value) {
+                percentageInterventions.push(`"${pair.key}": "${pair.value}"`);
+              }
+            });
+          }
+
+          const percentageInterventionStr = percentageInterventions.length > 0 ? percentageInterventions.join(', ') : '';
+          content += `percentageIntervention={${percentageInterventionStr}}, `;
+
             }
           
           const superElement = typeof element.superElement === 'string' 
