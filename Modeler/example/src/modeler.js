@@ -24,14 +24,6 @@ import AddExporter from '@bpmn-io/add-exporter';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 
-import CustomPalette from '../../custom-modeler/custom/CustomPalette';
-import CustomElementFactory from '../../custom-modeler/custom/CustomElementFactory';
-import CustomRenderer from '../../custom-modeler/custom/CustomRenderer';
-import CustomRules from '../../custom-modeler/custom/CustomRules';
-import CustomContextPadProvider from '../../custom-modeler/custom/CustomContextPadProvider';
-import CustomOrderingProvider from '../../custom-modeler/custom/CustomOrderingProvider';
-import CustomUpdater from '../../custom-modeler/custom/CustomUpdater';
-
 import CustomModeler from '../../custom-modeler';
 
 import {
@@ -50,15 +42,6 @@ $(function() {
       propertiesProviderModule,
       resizeAllModule,
       AddExporter,
-      CustomPalette,
-      {
-    customElementFactory: ['type', CustomElementFactory]
-      },
-      CustomRenderer,
-      CustomRules,
-      CustomContextPadProvider,
-      CustomOrderingProvider,
-      CustomUpdater
     ],
     exporter: {
       name: 'my-bpmn-exporter',
@@ -73,16 +56,6 @@ $(function() {
       participantWithoutLane: participantWithoutLaneExtension
     }
   });
-
-  bpmnModeler.addCustomElements = function (elements) {
-  const canvas = this.get('canvas');
-  const elementFactory = this.get('customElementFactory'); 
-  elements.forEach(el => {
-    const shape = elementFactory.createShape(el);
-    canvas.addShape(shape, el.parent || canvas.getRootElement());
-  });
-};
-
 
   async function openDiagram(xml) {
     try {
@@ -102,38 +75,21 @@ $(function() {
   (async () => {
   const storedXml = sessionStorage.getItem('importedDiagram');
 
-if (storedXml) {
-  try {
-    await openDiagram(storedXml);
-    sessionStorage.removeItem('importedDiagram');
-    return;
-  } catch (err) {
-    console.error('No se pudo cargar el diagrama:', err);
-  }
-}
-
-try {
-  await bpmnModeler.createDiagram();
-
-  const customElements = [
-    {
-      type: 'custom:triangle',
-      id: 'CustomTriangle_1',
-      x: 300,
-      y: 300
+  if (storedXml) {
+    try {
+      await openDiagram(storedXml);
+      sessionStorage.removeItem('importedDiagram');
+      return;
+    } catch (err) {
+      console.error('No se pudo cargar el diagrama:', err);
     }
-  ];
-
-  if (typeof bpmnModeler.addCustomElements === 'function') {
-    bpmnModeler.addCustomElements(customElements);
-  } else {
-    console.warn('addCustomElements no está definido en bpmnModeler');
   }
 
-} catch (err) {
-  console.error('No se pudo cargar el diagrama inicial:', err);
-}
-
+  try {
+    await bpmnModeler.createDiagram();
+  } catch (err) {
+    console.error('No se pudo cargar el diagrama inicial:', err);
+  }
 
 })();
 

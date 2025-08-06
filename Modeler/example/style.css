@@ -1,24 +1,5 @@
 /** link styles */
 
-.icon-custom-triangle {
-  background-image: url('data:image/svg+xml,<svg ...>'); /* o usa una clase base */
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  display: block;
-}
-
-.icon-custom-circle {
-  background-image: url('data:image/svg+xml,<svg ...>');
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  display: block;
-}
-.icon-custom-square {
-  background-image: url('data:image/svg+xml,<svg ...>');
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  display: block;
-}
 
 html, body, #canvas {
   width: 100%;
