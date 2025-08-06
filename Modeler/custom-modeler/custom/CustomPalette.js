@@ -1,13 +1,10 @@
-import {
-  assign
-} from 'min-dash';
+import { assign } from 'min-dash';
+import { Scheduler } from './dataURL';
 
-import CustomElementFactory from './CustomElementFactory';
 /**
  * A palette that allows you to create BPMN _and_ custom elements.
  */
 export default function PaletteProvider(palette, create, elementFactory, spaceTool, lassoTool) {
-
   this._create = create;
   this._elementFactory = elementFactory;
   this._spaceTool = spaceTool;
@@ -24,31 +21,29 @@ PaletteProvider.$inject = [
   'lassoTool'
 ];
 
-
-PaletteProvider.prototype.getPaletteEntries = function(element) {
+PaletteProvider.prototype.getPaletteEntries = function (element) {
 
   var actions = {},
-      create = this._create,
-      elementFactory = this._elementFactory,
-      spaceTool = this._spaceTool,
-      lassoTool = this._lassoTool;
+    create = this._create,
+    elementFactory = this._elementFactory,
+    spaceTool = this._spaceTool,
+    lassoTool = this._lassoTool;
 
-
-  function createAction(type, group, className, title, options) {
+  function createAction(type, group, className, title, options, imageUrl) {
 
     function createListener(event) {
       var shape = elementFactory.createShape(assign({ type: type }, options));
 
-      if (options) {
+      if (options && options.isExpanded !== undefined) {
         shape.businessObject.di.isExpanded = options.isExpanded;
       }
 
       create.start(event, shape);
     }
 
-    var shortType = type.replace(/^bpmn:/, '');
+    var shortType = type.replace(/^bpmn:/, '').replace(/^custom:/, '');
 
-    return {
+    const action = {
       group: group,
       className: className,
       title: title || 'Create ' + shortType,
@@ -57,6 +52,12 @@ PaletteProvider.prototype.getPaletteEntries = function(element) {
         click: createListener
       }
     };
+
+    if (imageUrl) {
+      action.imageUrl = imageUrl;
+    }
+
+    return action;
   }
 
   function createParticipant(event, collapsed) {
@@ -64,22 +65,29 @@ PaletteProvider.prototype.getPaletteEntries = function(element) {
   }
 
   assign(actions, {
-    'custom-triangle': createAction(
-      'custom:triangle', 'custom', 'icon-custom-triangle'
+    // --- ELEMENTO PERSONALIZADO: Scheduler ---
+    'custom-scheduler': createAction(
+      'custom:scheduler',
+      'custom',
+      '', // No se necesita className si se usa imageUrl
+      'Create Scheduler',
+      {},
+      Scheduler.dataURL
     ),
-    'custom-circle': createAction(
-      'custom:circle', 'custom', 'icon-custom-circle'
-    ),
+
+    // --- Separador de grupo custom ---
     'custom-separator': {
       group: 'custom',
       separator: true
     },
+
+    // --- Herramientas básicas ---
     'lasso-tool': {
       group: 'tools',
       className: 'bpmn-icon-lasso-tool',
       title: 'Activate the lasso tool',
       action: {
-        click: function(event) {
+        click: function (event) {
           lassoTool.activateSelection(event);
         }
       }
@@ -89,7 +97,7 @@ PaletteProvider.prototype.getPaletteEntries = function(element) {
       className: 'bpmn-icon-space-tool',
       title: 'Activate the create/remove space tool',
       action: {
-        click: function(event) {
+        click: function (event) {
           spaceTool.activateSelection(event);
         }
       }
@@ -98,6 +106,8 @@ PaletteProvider.prototype.getPaletteEntries = function(element) {
       group: 'tools',
       separator: true
     },
+
+    // --- BPMN estándar ---
     'create.start-event': createAction(
       'bpmn:StartEvent', 'event', 'bpmn-icon-start-event-none'
     ),

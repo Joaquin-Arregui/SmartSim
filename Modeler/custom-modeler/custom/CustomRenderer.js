@@ -1,5 +1,4 @@
 import inherits from 'inherits-browser';
-
 import BaseRenderer from 'diagram-js/lib/draw/BaseRenderer';
 
 import {
@@ -13,104 +12,17 @@ import {
   create as svgCreate
 } from 'tiny-svg';
 
-var COLOR_GREEN = '#52B415',
-    COLOR_RED = '#cc0000',
-    COLOR_YELLOW = '#ffc800';
+import { Scheduler } from './dataURL'; // 🆕 importante
 
-/**
- * A renderer that knows how to render custom elements.
- */
+const COLOR_RED = '#cc0000';
+
 export default function CustomRenderer(eventBus, styles) {
-
   BaseRenderer.call(this, eventBus, 2000);
 
-  var computeStyle = styles.computeStyle;
-
-  this.drawTriangle = function(p, side) {
-    var halfSide = side / 2,
-        points,
-        attrs;
-
-    points = [ halfSide, 0, side, side, 0, side ];
-
-    attrs = computeStyle(attrs, {
-      stroke: COLOR_GREEN,
-      strokeWidth: 2,
-      fill: COLOR_GREEN
-    });
-
-    var polygon = svgCreate('polygon');
-
-    svgAttr(polygon, {
-      points: points
-    });
-
-    svgAttr(polygon, attrs);
-
-    svgAppend(p, polygon);
-
-    return polygon;
-  };
-
-  this.getTrianglePath = function(element) {
-    var x = element.x,
-        y = element.y,
-        width = element.width,
-        height = element.height;
-
-    var trianglePath = [
-      [ 'M', x + width / 2, y ],
-      [ 'l', width / 2, height ],
-      [ 'l', -width, 0 ],
-      [ 'z' ]
-    ];
-
-    return componentsToPath(trianglePath);
-  };
-
-  this.drawCircle = function(p, width, height) {
-    var cx = width / 2,
-        cy = height / 2;
-
-    var attrs = computeStyle(attrs, {
-      stroke: COLOR_YELLOW,
-      strokeWidth: 4,
-      fill: COLOR_YELLOW
-    });
-
-    var circle = svgCreate('circle');
-
-    svgAttr(circle, {
-      cx: cx,
-      cy: cy,
-      r: Math.round((width + height) / 4)
-    });
-
-    svgAttr(circle, attrs);
-
-    svgAppend(p, circle);
-
-    return circle;
-  };
-
-  this.getCirclePath = function(shape) {
-    var cx = shape.x + shape.width / 2,
-        cy = shape.y + shape.height / 2,
-        radius = shape.width / 2;
-
-    var circlePath = [
-      [ 'M', cx, cy ],
-      [ 'm', 0, -radius ],
-      [ 'a', radius, radius, 0, 1, 1, 0, 2 * radius ],
-      [ 'a', radius, radius, 0, 1, 1, 0, -2 * radius ],
-      [ 'z' ]
-    ];
-
-    return componentsToPath(circlePath);
-  };
+  const computeStyle = styles.computeStyle;
 
   this.drawCustomConnection = function(p, element) {
-    var attrs = computeStyle(attrs, {
+    const attrs = computeStyle({}, {
       stroke: COLOR_RED,
       strokeWidth: 2
     });
@@ -119,72 +31,82 @@ export default function CustomRenderer(eventBus, styles) {
   };
 
   this.getCustomConnectionPath = function(connection) {
-    var waypoints = connection.waypoints.map(function(p) {
-      return p.original || p;
-    });
+    const waypoints = connection.waypoints.map(p => p.original || p);
 
-    var connectionPath = [
-      [ 'M', waypoints[0].x, waypoints[0].y ]
+    const connectionPath = [
+      ['M', waypoints[0].x, waypoints[0].y]
     ];
 
-    waypoints.forEach(function(waypoint, index) {
+    waypoints.forEach((waypoint, index) => {
       if (index !== 0) {
-        connectionPath.push([ 'L', waypoint.x, waypoint.y ]);
+        connectionPath.push(['L', waypoint.x, waypoint.y]);
       }
     });
 
     return componentsToPath(connectionPath);
   };
+
+  this.drawScheduler = function(p) {
+    const width = 100;
+    const height = 80;
+
+    const image = svgCreate('image');
+
+    svgAttr(image, {
+      href: Scheduler.dataURL,
+      width,
+      height,
+      x: 0,
+      y: 0
+    });
+
+    svgAppend(p, image);
+
+    return image;
+  };
+
+  this.getSchedulerPath = function(shape) {
+    const { x, y, width, height } = shape;
+    return `M${x},${y} h${width} v${height} h-${width} Z`;
+  };
 }
 
 inherits(CustomRenderer, BaseRenderer);
 
-CustomRenderer.$inject = [ 'eventBus', 'styles' ];
-
+CustomRenderer.$inject = ['eventBus', 'styles'];
 
 CustomRenderer.prototype.canRender = function(element) {
   return /^custom:/.test(element.type);
 };
 
 CustomRenderer.prototype.drawShape = function(p, element) {
-  var type = element.type;
+  const type = element.type;
 
-  if (type === 'custom:triangle') {
-    return this.drawTriangle(p, element.width);
+  if (type === 'custom:scheduler') {
+    return this.drawScheduler(p);
   }
 
-  if (type === 'custom:circle') {
-    return this.drawCircle(p, element.width, element.height);
-  }
+  return null;
 };
 
 CustomRenderer.prototype.getShapePath = function(shape) {
-  var type = shape.type;
+  const type = shape.type;
 
-  if (type === 'custom:triangle') {
-    return this.getTrianglePath(shape);
+  if (type === 'custom:scheduler') {
+    return this.getSchedulerPath(shape);
   }
 
-  if (type === 'custom:circle') {
-    return this.getCirclePath(shape);
-  }
+  return null;
 };
 
 CustomRenderer.prototype.drawConnection = function(p, element) {
-
-  var type = element.type;
-
-  if (type === 'custom:connection') {
+  if (element.type === 'custom:connection') {
     return this.drawCustomConnection(p, element);
   }
 };
 
-
 CustomRenderer.prototype.getConnectionPath = function(connection) {
-
-  var type = connection.type;
-
-  if (type === 'custom:connection') {
+  if (connection.type === 'custom:connection') {
     return this.getCustomConnectionPath(connection);
   }
 };
