@@ -22,12 +22,15 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         || is(element, 'bpmn:ServiceTask'))) {
         groups.push(createUserGroup(element, translate));
       } else if (is(element, 'bpmn:SequenceFlow')) {
-        const lengthSubTask = element.businessObject.sourceRef.outgoing.length;
-        const sourceElement = element.businessObject.sourceRef;
+        const sourceElement = element.businessObject && element.businessObject.sourceRef;
+        const lengthSubTask = Array.isArray(sourceElement?.outgoing)
+          ? sourceElement.outgoing.length
+          : 0;
+
         if (sourceElement && is(sourceElement, 'bpmn:Gateway') && lengthSubTask > 1) {
           groups.push(createSequenceFlowGroup(element, translate));
         }
-      } else if (is(element, 'bpmn:Process')) {
+      }else if (is(element, 'bpmn:Process')) {
         groups.push(createModelGroup(element, translate));
       } else if ( is(element, 'bpmn:Collaboration')) {
         groups.push(createCollaborationGroup(element, translate));

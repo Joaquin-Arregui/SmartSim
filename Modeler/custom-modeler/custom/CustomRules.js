@@ -34,17 +34,19 @@ CustomRules.prototype.init = function() {
    * Can source and target be connected?
    */
   function canConnect(source, target) {
-    // allow connection from/to custom:scheduler ↔ bpmn:FlowNode
-    if (isScheduler(source) && is(target, 'bpmn:FlowNode')) {
-      return { type: 'custom:connection' };
-    }
+  const isScheduler = el => el && el.type === 'custom:scheduler';
 
-    if (isScheduler(target) && is(source, 'bpmn:FlowNode')) {
-      return { type: 'custom:connection' };
-    }
-
-    return false;
+  if (
+    (isScheduler(source) && is(target, 'bpmn:FlowNode')) ||
+    (isScheduler(target) && is(source, 'bpmn:FlowNode')) ||
+    (isScheduler(source) && isScheduler(target))
+  ) {
+    return { type: 'bpmn:SequenceFlow' };
   }
+
+  return false;
+}
+
 
   // Allow moving custom elements if destination is valid
   this.addRule('elements.move', HIGH_PRIORITY, function(context) {

@@ -27,12 +27,12 @@ export default function CustomContextPadProvider(injector, connect, translate) {
       connect.start(event, element, autoActivate);
     }
 
-    if (isAny(businessObject, [ 'custom:triangle', 'custom:circle' ])) {
+    if (isAny(businessObject, [ 'custom:scheduler', 'custom:triangle', 'custom:circle' ])) {
       assign(actions, {
         'connect': {
           group: 'connect',
-          className: 'bpmn-icon-connection-multi',
-          title: translate('Connect using custom connection'),
+          className: 'bpmn-icon-connection',
+          title: translate('Connect using SequenceFlow'),
           action: {
             click: startConnect,
             dragstart: startConnect

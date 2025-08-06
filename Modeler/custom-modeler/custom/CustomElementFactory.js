@@ -36,10 +36,23 @@ export default function CustomElementFactory(bpmnFactory, moddle) {
     // add type to businessObject if custom
     if (/^custom:/.test(type)) {
       if (!attrs.businessObject) {
+        
         attrs.businessObject = {
           type: type,
-          documentation: [] // ← ✅ Añade esto
+          documentation: []
         };
+
+        if (type === 'custom:scheduler') {
+          attrs.businessObject.name = '';
+
+          // 🔒 Seguridad absoluta contra errores en el panel
+          attrs.businessObject.documentation = [];
+          attrs.businessObject.customAttributes = [];
+          attrs.businessObject.extensionElements = moddle.create('bpmn:ExtensionElements', {
+            values: []
+          });
+        }
+
 
         if (attrs.id) {
           assign(attrs.businessObject, {
