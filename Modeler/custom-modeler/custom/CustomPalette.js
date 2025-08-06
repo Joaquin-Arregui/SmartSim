@@ -2,7 +2,7 @@ import {
   assign
 } from 'min-dash';
 
-
+import CustomElementFactory from './CustomElementFactory';
 /**
  * A palette that allows you to create BPMN _and_ custom elements.
  */

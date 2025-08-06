@@ -1,0 +1,19 @@
+{
+  "name": "custom",
+  "uri": "http://example.com/custom",
+  "prefix": "custom",
+  "types": [
+    {
+      "name": "Triangle",
+      "superClass": [ "bpmn:FlowNode" ],
+      "properties": [],
+      "traits": [] 
+    },
+    {
+      "name": "Circle",
+      "superClass": [ "bpmn:FlowNode" ],
+      "properties": [],
+      "traits": [] 
+    }
+  ]
+}

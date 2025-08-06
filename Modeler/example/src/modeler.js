@@ -32,12 +32,14 @@ import CustomContextPadProvider from '../../custom-modeler/custom/CustomContextP
 import CustomOrderingProvider from '../../custom-modeler/custom/CustomOrderingProvider';
 import CustomUpdater from '../../custom-modeler/custom/CustomUpdater';
 
+import CustomModeler from '../../custom-modeler';
+
 import {
   exportToEsper
 } from './taskHandlers';
 
 $(function() {
-  const bpmnModeler = new BpmnModeler({
+  const bpmnModeler = new CustomModeler({
     container: '#canvas',
     propertiesPanel: {
       parent: '#properties-panel'
