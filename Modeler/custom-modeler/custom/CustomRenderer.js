@@ -46,24 +46,25 @@ export default function CustomRenderer(eventBus, styles) {
     return componentsToPath(connectionPath);
   };
 
-  this.drawScheduler = function(p) {
-    const width = 100;
-    const height = 80;
+  this.drawScheduler = function(p, element) {
+  const width = element.width || 100;
+  const height = element.height || 80;
 
-    const image = svgCreate('image');
+  const image = svgCreate('image');
 
-    svgAttr(image, {
-      href: Scheduler.dataURL,
-      width,
-      height,
-      x: 0,
-      y: 0
-    });
+  svgAttr(image, {
+    href: Scheduler.dataURL,
+    width: width,
+    height: height,
+    x: 0,
+    y: 0
+  });
 
-    svgAppend(p, image);
+  svgAppend(p, image);
 
-    return image;
-  };
+  return image;
+};
+
 
   this.getSchedulerPath = function(shape) {
     const { x, y, width, height } = shape;
@@ -83,7 +84,7 @@ CustomRenderer.prototype.drawShape = function(p, element) {
   const type = element.type;
 
   if (type === 'custom:scheduler') {
-    return this.drawScheduler(p);
+  return this.drawScheduler(p, element);
   }
 
   return null;
