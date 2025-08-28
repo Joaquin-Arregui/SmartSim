@@ -1,0 +1,19 @@
+{
+  "name": "custom",
+  "uri": "http://example.com/custom",
+  "prefix": "custom",
+  "xml": { "tagAlias": "lowerCase" },
+  "types": [
+    {
+      "name": "Scheduler",
+      "superClass": [ "bpmn:Task" ],
+      "properties": [
+        {
+          "name": "url",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    }
+  ]
+}

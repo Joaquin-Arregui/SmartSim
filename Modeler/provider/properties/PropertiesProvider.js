@@ -5,6 +5,7 @@ import CollaborationProps from '../model/parts/CollaborationProps';
 import LaneProps from '../model/parts/LaneProps';
 import ParticipantProps from '../model/parts/ParticipantProps';
 import ParticipantWithoutLaneProps from '../model/parts/ParticipantWithoutLaneProps';
+import SchedulerProps from '../model/parts/SchedulerProps';
 
 import { is } from 'bpmn-js/lib/util/ModelUtil';
 
@@ -46,7 +47,9 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         } else {
             groups.push(createParticipantGroup(element, translate));
         }
-    }    
+    } else if (is(element, 'custom:scheduler')) {
+        groups.push(createSchedulerGroup(element, translate));
+      }    
       return groups;
     };
   };
@@ -55,6 +58,17 @@ export default function PropertiesProvider(propertiesPanel, translate) {
 }
 
 PropertiesProvider.$inject = ['propertiesPanel', 'translate'];
+
+function createSchedulerGroup(element, translate) {
+  const schedulerGroup = {
+    id: 'Scheduler',
+    label: translate('Scheduler parameters'),
+    entries: SchedulerProps(element),
+    tooltip: translate('Make sure you know what you are doing!')
+  };
+
+  return schedulerGroup;
+}
 
 function createUserGroup(element, translate) {
   const userGroup = {
