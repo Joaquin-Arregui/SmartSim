@@ -311,7 +311,6 @@ function exportToEsper(bpmnModeler) {
           content += `subTask="${subTasks}"]\n`;
 
         } else if (element.type === 'custom:Scheduler') {
-          // 👉 NUEVO BLOQUE PARA SCHEDULER
           content += `url="${element.Url || ''}"]\n`;
 
         } else if (element.type === 'bpmn:Collaboration') {

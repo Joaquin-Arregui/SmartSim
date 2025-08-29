@@ -9,6 +9,12 @@ export default function(element) {
       element,
       component: urlFunction,
       isEdited: el => isStringEntryEdited(el, 'url')
+    },
+    {
+      id: 'fileSelector',
+      element,
+      component: fileSelectorFunction,
+      isEdited: el => isStringEntryEdited(el, 'fileName')
     }
   ];
 }
@@ -55,6 +61,68 @@ function urlFunction(props) {
     validate=${validate}
     tooltip=${translate('Enter a valid URL')}
   />`;
+}
+
+function fileSelectorFunction(props) {
+  const { element, id } = props;
+  const modeling = useService('modeling');
+  const translate = useService('translate');
+  const bo = element?.businessObject;
+
+  const fileName = (bo?.fileName ?? bo?.get?.('custom:fileName')) || '';
+  const hasFile = !!fileName;
+
+  const onFileChange = async (evt) => {
+    const file = evt?.target?.files?.[0];
+    if (!file) return;
+    const dataUrl = await readAsDataURL(file);
+
+    modeling.updateProperties(element, {
+      'custom:fileName': file.name,
+      'custom:fileContent': dataUrl
+    });
+  };
+
+  const clearFile = () => {
+    modeling.updateProperties(element, {
+      'custom:fileName': '',
+      'custom:fileContent': ''
+    });
+  };
+
+  return html`
+    <div class="bio-properties-panel-entry" data-entry-id=${id}>
+      <label class="bio-properties-panel-label" for=${id}>
+        ${translate('File')}
+      </label>
+      <div class="bio-properties-panel-input">
+        <input
+          id=${id}
+          type="file"
+          onChange=${onFileChange}
+        />
+        ${hasFile && html`
+          <div class="bio-properties-panel-helper">
+            <span>${translate('Selected file')}: <strong>${fileName}</strong></span>
+            <button
+              type="button"
+              class="bio-properties-panel-button"
+              onClick=${clearFile}
+            >${translate('Clear')}</button>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function readAsDataURL(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
 }
 
 function isStringEntryEdited(element, attributeName) {

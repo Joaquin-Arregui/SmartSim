@@ -12,7 +12,9 @@
           "name": "url",
           "type": "String",
           "isAttr": true
-        }
+        },
+    { "name": "fileName", "type": "String", "isAttr": true },
+    { "name": "fileContent", "type": "String" }
       ]
     }
   ]
