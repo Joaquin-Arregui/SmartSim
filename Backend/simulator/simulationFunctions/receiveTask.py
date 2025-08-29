@@ -29,7 +29,7 @@ f'''
         start_standBy = env.now
         possibleUsers = {element.userTask}
         if possibleUsers is None:
-            possibleUsers = getUserPool(env)
+            possibleUsers = getUserPool(env, TaskName)
         possibleUsers = resolve_possible_users(possibleUsers, TaskName)
         available_users = [user for user in possibleUsers if user_resources[user].count < user_resources[user].capacity]
         while not available_users:

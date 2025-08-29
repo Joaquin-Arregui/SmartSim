@@ -20,11 +20,12 @@ class BPMNCollaboration(BPMNElement):
         self.instances = instances
 
 class BPMNParticipant(BPMNElement):
-    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, frequency: int, users: List[str], contained_elements: List[str]):
+    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, frequency: int, users: List[str], contained_elements: List[str], user_intervention: Dict[int, str]):
         super().__init__(name, id_bpmn, bpmn_type)
         self.frequency = frequency
         self.users = users
         self.contained_elements = contained_elements
+        self.user_intervention = user_intervention
 
 class BPMNLane(BPMNElement):
     def __init__(self, name: str, id_bpmn: str, bpmn_type: str, users: List[str], contained_elements: List[str]):

@@ -36,7 +36,7 @@ for i in range(nInstances):
     for dataObject in defaultData:
         data.append((dataObject, f'Instance {{i + 1}}'))
 
-def getUserPool(env):
+def getUserPool(env, element):
     users = userPool.copy()
     for interventionTime, intervention in userIntervention.items():
         if env.now >= interventionTime:
@@ -214,6 +214,9 @@ res = res + '''
 with open(f'heatMap/files/resultSimulation.xes', 'w') as f:
     f.write(res)"""
     else:
+        participants = {}
+        for p in elements["participants"]:
+            participants[p[1]] = elements[p[1]].user_intervention
         script = f"""
 import simpy
 import random
@@ -246,6 +249,26 @@ gatewayConnections = {elements['gatewayConnections']}
 for i in range(nInstances):
     for dataObject in defaultData:
         data.append((dataObject, f'Instance {{i + 1}}'))
+
+def getUserPool(env, element):
+    participants = {participants}
+    participantName = elementsContainer[element]
+    users = usersPerLane[participantName]
+    userIntervention = participants[participantName]
+    
+    for interventionTime, intervention in userIntervention.items():
+        if env.now >= interventionTime:
+            for i in intervention:
+                if i[0] == "+":
+                    users.append(i[1:])
+                    if not i[1:] in user_resources.keys():
+                        user_resources[i[1:]] = simpy.Resource(env, capacity=1)
+                    if not i[1:] in user_assignments.keys():
+                        user_assignments[i[1:]] = 0
+                elif i[0] == "-":
+                    if i[1:] in users:
+                        users.remove(i[1:])
+    return users
 
 def resolve_task_time(task_name, max_time, min_time, user):
     if user not in user_task_count:

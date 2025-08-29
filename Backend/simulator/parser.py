@@ -87,7 +87,20 @@ def parse_bpmn_elements(file_content: str):
                 frequency = int(re.search(r'frequency=(\d+)', line).group(1))
                 contained_elements_str = re.search(r'containedElements=\[([^\]]*)\]', line).group(1)
                 contained_elements = [element.strip('"') for element in contained_elements_str.split(", ")]
-                element = BPMNParticipant(name, id_bpmn, bpmn_type, frequency, participant_users, contained_elements)
+                userIntervention_match = re.search(r'userIntervention=({[^}]+})', line)
+                if userIntervention_match:
+                    userIntervention_str = userIntervention_match.group(1)
+                    raw_pairs = re.findall(r'"(\d+)"\s*:\s*"([^"]+)"', userIntervention_str)
+                    userIntervention = defaultdict(list)
+                    for key_txt, val_txt in raw_pairs:
+                        key = int(key_txt)
+                        val = val_txt
+                        userIntervention[key].append(val)
+                    userIntervention = dict(sorted(userIntervention.items()))
+
+                else:
+                    userIntervention = {}
+                element = BPMNParticipant(name, id_bpmn, bpmn_type, frequency, participant_users, contained_elements, userIntervention)
                 users[id_bpmn] = participant_users
                 participants.append([frequency, id_bpmn])
                 elementsContainedParticipants[id_bpmn] = contained_elements
