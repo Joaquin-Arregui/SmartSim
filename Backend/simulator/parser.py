@@ -147,6 +147,18 @@ def parse_bpmn_elements(file_content: str):
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -160,13 +172,25 @@ def parse_bpmn_elements(file_content: str):
                 else:
                     multiInstanceType = None
                 subTask = re.search(r'subTask="([^"]+)"', line).group(1)
-                element = BPMNTask(name, id_bpmn, bpmn_type, userTask, numberOfExecutions, minimumTime, maximumTime, loopParameter, multiInstanceType, subTask)
+                element = BPMNTask(name, id_bpmn, bpmn_type, userTask, numberOfExecutions, minimumTime, maximumTime, minimumTimeByUser, maximumTimeByUser, loopParameter, multiInstanceType, subTask)
             
             elif element_type == "UserTask":
                 userTask = match.group(1).split(', ') if (match := re.search(r'userTask="([^"]+)"', line)) else None
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -189,6 +213,18 @@ def parse_bpmn_elements(file_content: str):
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
                 messageDestiny = None
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -211,6 +247,18 @@ def parse_bpmn_elements(file_content: str):
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
                 messageOrigin = None
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -231,6 +279,18 @@ def parse_bpmn_elements(file_content: str):
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -251,6 +311,18 @@ def parse_bpmn_elements(file_content: str):
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -271,6 +343,18 @@ def parse_bpmn_elements(file_content: str):
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -291,6 +375,18 @@ def parse_bpmn_elements(file_content: str):
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)
@@ -311,6 +407,18 @@ def parse_bpmn_elements(file_content: str):
                 numberOfExecutions = int(re.search(r'numberOfExecutions=(\d+)', line).group(1))
                 minimumTime = int(re.search(r'minimumTime=(\d+)', line).group(1))
                 maximumTime = int(re.search(r'maximumTime=(\d+)', line).group(1))
+                minimumTimeByUser_match = re.search(r'minimumTimeByUser=({[^}]+})', line)
+                if minimumTimeByUser_match:
+                    minimumTimeByUser_str = minimumTimeByUser_match.group(1)
+                    minimumTimeByUser = ast.literal_eval(minimumTimeByUser_str)
+                else:
+                    minimumTimeByUser = None
+                maximumTimeByUser_match = re.search(r'maximumTimeByUser=({[^}]+})', line)
+                if maximumTimeByUser_match:
+                    maximumTimeByUser_str = maximumTimeByUser_match.group(1)
+                    maximumTimeByUser = ast.literal_eval(maximumTimeByUser_str)
+                else:
+                    maximumTimeByUser = None
                 loopParameter_match = re.search(r'loopParameter=({[^}]+})', line)
                 if loopParameter_match:
                     loopParameter_str = loopParameter_match.group(1)

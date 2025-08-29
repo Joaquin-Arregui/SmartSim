@@ -35,7 +35,10 @@ for i in range(nInstances):
     for dataObject in defaultData:
         data.append((dataObject, f'Instance {{i + 1}}'))
 
-def resolve_task_time(task_name, max_time, min_time, user):
+def resolve_task_time(task_name, max_time, min_time, max_time_by_user, min_time_by_user, user):
+    if max_time_by_user != None and min_time_by_user != None and user in max_time_by_user.keys() and user in min_time_by_user.keys():
+        min_time = min_time_by_user[user]
+        max_time = max_time_by_user[user]
     if user not in user_task_count:
         user_task_count[user] = {{}}
     if task_name not in user_task_count[user]:
@@ -228,7 +231,10 @@ for i in range(nInstances):
     for dataObject in defaultData:
         data.append((dataObject, f'Instance {{i + 1}}'))
 
-def resolve_task_time(task_name, max_time, min_time, user):
+def resolve_task_time(task_name, max_time, min_time, max_time_by_user, min_time_by_user, user):
+    if user in max_time_by_user.keys() and user in min_time_by_user.keys():
+        min_time = min_time_by_user[user]
+        max_time = max_time_by_user[user]
     if user not in user_task_count:
         user_task_count[user] = {{}}
     if task_name not in user_task_count[user]:

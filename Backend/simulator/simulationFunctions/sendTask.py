@@ -18,7 +18,7 @@ def {element.id_bpmn}(env, name):
             request = user_resources[userTask].request()
             yield request
             try:
-                time = resolve_task_time('{element.id_bpmn}', {element.maximumTime}, {element.minimumTime}, userTask)
+                time = resolve_task_time('{element.id_bpmn}', {element.maximumTime}, {element.minimumTime}, {element.maximumTimeByUser}, {element.minimumTimeByUser}, userTask)
                 if env.now > start_standBy: 
                     simulationResults[name].append(
 f'''
