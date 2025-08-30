@@ -54,7 +54,13 @@ def parse_bpmn_elements(file_content: str):
                     userWithRole = ast.literal_eval(userWithRole_str)
                 else:
                     userWithRole = {}
-                element = BPMNProcess(name, id_bpmn, bpmn_type, instances, frequency, userWithoutRole, userWithRole)
+                userRestrictions_match = re.search(r'userRestrictions=({[^}]+})', line)
+                if userRestrictions_match:
+                    userRestrictions_str = userRestrictions_match.group(1)
+                    userRestrictions = ast.literal_eval(userRestrictions_str)
+                else:
+                    userRestrictions = {}
+                element = BPMNProcess(name, id_bpmn, bpmn_type, instances, frequency, userWithoutRole, userWithRole, userRestrictions)
 
             elif element_type == "Collaboration":
                 process = id_bpmn

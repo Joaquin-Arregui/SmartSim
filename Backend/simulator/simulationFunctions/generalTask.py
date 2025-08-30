@@ -15,6 +15,7 @@ def {element.id_bpmn}(env, name):
         if available_users:
             userTask = min(available_users, key=lambda u: user_assignments[u])
             user_assignments[userTask] += 1
+            user_history['{element.subTask}'] = userTask
             request = user_resources[userTask].request()
             yield request
             try:

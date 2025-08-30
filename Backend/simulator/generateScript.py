@@ -22,6 +22,8 @@ userPool = userWithRole + userWithoutRole
 user_task_count = {{}}
 user_assignments = {{user: 0 for user in userPool}}
 user_resources = {{}}
+user_history = {{}}
+userRestrictions = {elementProcess.userRestrictions}
 message_events = []
 generatedData = {elements['generatedData']}
 requiredData = {elements['requiredData']}
@@ -58,6 +60,16 @@ def resolve_possible_users(possibleUsers, taskName):
             users.append(item)
         elif item in userWithRole:
             users.append(item)
+    restrictions = userRestrictions[user_history[taskName]] if taskName in user_history and user_history[taskName] in userRestrictions else []
+    forcedUsers = []
+    for restriction in restrictions:
+        if restriction.startswith('+'):
+            forcedUsers.append(restriction[1:])
+        elif restriction.startswith('-'):
+            if restriction[1:] in users:
+                users.remove(restriction[1:])
+    if forcedUsers:
+        users = list(set(users) & set(forcedUsers))
     return list(set(users))
 
 """

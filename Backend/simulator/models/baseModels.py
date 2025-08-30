@@ -7,12 +7,13 @@ class BPMNElement:
         self.bpmn_type = bpmn_type
 
 class BPMNProcess(BPMNElement):
-    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, instances: int, frequency: int, userWithoutRole: List[str], userWithRole: Dict[str, List[str]]):
+    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, instances: int, frequency: int, userWithoutRole: List[str], userWithRole: Dict[str, List[str]], userRestrictions: Dict[str, List[str]]):
         super().__init__(name, id_bpmn, bpmn_type)
         self.instances = instances
         self.frequency = frequency
         self.userWithoutRole = userWithoutRole
         self.userWithRole = userWithRole
+        self.userRestrictions = userRestrictions
 
 class BPMNCollaboration(BPMNElement):
     def __init__(self, name: str, id_bpmn: str, bpmn_type: str, instances: int):
