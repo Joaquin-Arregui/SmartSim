@@ -10,7 +10,7 @@ import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js
 import download from 'downloadjs';
 import $ from 'jquery';
 import resizeAllModule from '../../lib/resize-all-rules';
-import propertiesProviderModule from '../../provider/properties';
+import propertiesProviderResourceModule from '../../provider/properties/index';
 
 import collaborationExtension from '../../descriptors/collaboration.json';
 import customExtension from '../../descriptors/custom-moddle.json';
@@ -36,7 +36,7 @@ $(function () {
     additionalModules: [
       BpmnPropertiesPanelModule,
       BpmnPropertiesProviderModule,
-      propertiesProviderModule,
+      propertiesProviderResourceModule,
       resizeAllModule,
       AddExporter
     ],
