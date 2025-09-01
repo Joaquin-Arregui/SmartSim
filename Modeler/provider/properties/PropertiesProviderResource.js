@@ -1,4 +1,4 @@
-import UserProps from '../user/parts/UserProps';
+import UserProps from '../user/parts/UserPropsResource';
 import SequenceFlowProps from '../sequenceFlow/parts/SequenceFlowProps';
 import ModelProps from '../model/parts/ModelProps';
 import CollaborationProps from '../model/parts/CollaborationProps';

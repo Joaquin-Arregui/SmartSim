@@ -9,24 +9,22 @@ import BpmnModeler from 'bpmn-js/lib/Modeler';
 import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
 import download from 'downloadjs';
 import $ from 'jquery';
-
 import resizeAllModule from '../../lib/resize-all-rules';
-import propertiesProviderModule from '../../provider/properties';
-import userModdleDescriptor from '../../descriptors/user.json';
-import sequenceFlowExtension from '../../descriptors/sequenceFlow.json';
-import modelExtension from '../../descriptors/model.json';
-import collaborationExtension from '../../descriptors/collaboration.json';
-import laneExtension from '../../descriptors/lane.json';
-import participantWithoutLaneExtension from '../../descriptors/participantWithoutLane.json';
-import customExtension from '../../descriptors/custom-moddle.json';
+import propertiesProviderResourceModule from '../../provider/properties/index';
 
+import collaborationExtension from '../../descriptors/collaboration.json';
+import customExtension from '../../descriptors/custom-moddle.json';
+import sequenceFlowExtension from '../../descriptors/sequenceFlow.json';
 import AddExporter from '@bpmn-io/add-exporter';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
-
 import CustomModeler from '../../custom-modeler';
-
 import { exportToEsper } from './taskHandlers';
+
+import userModdleDescriptor from '../../descriptorsResource/userResource.json';
+import modelExtension from '../../descriptorsResource/modelResource.json';
+import laneExtension from '../../descriptorsResource/laneResource.json';
+import participantWithoutLaneExtension from '../../descriptorsResource/participantWithoutLaneResource.json';
 
 $(function () {
   // ----------------------------
@@ -38,7 +36,7 @@ $(function () {
     additionalModules: [
       BpmnPropertiesPanelModule,
       BpmnPropertiesProviderModule,
-      propertiesProviderModule,
+      propertiesProviderResourceModule,
       resizeAllModule,
       AddExporter
     ],

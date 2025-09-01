@@ -58,6 +58,27 @@ function getAllRelevantTasks(bpmnModeler) {
     try { new URL(v); return true; } catch { return false; }
   };
 
+  // Helper: lee arrays de model:KeyValuePair y devuelve { [key: string]: Integer }
+  const readKeyIntMap = (bo, propName) => {
+    const fromArray = (arr) =>
+      Object.fromEntries(
+        arr
+          .filter(kv => kv && typeof kv.key === 'string')
+          .map(kv => {
+            const v = Number.parseInt(kv.value, 10);
+            return [ kv.key, Number.isInteger(v) ? v : 0 ];
+          })
+      );
+
+    if (Array.isArray(bo?.[propName])) {
+      return fromArray(bo[propName]);
+    }
+    if (bo?.processRef && Array.isArray(bo.processRef[propName])) {
+      return fromArray(bo.processRef[propName]);
+    }
+    return {};
+  };
+
   return relevantElements.map(e => {
     const businessObject = e.businessObject;
 
@@ -243,6 +264,10 @@ function getAllRelevantTasks(bpmnModeler) {
       ? (businessObject.fileContent ?? businessObject.get?.('custom:fileContent') ?? '')
       : '';
 
+    // >>> NUEVO: mapas por usuario (string -> Integer)
+    const minimumTimeByUserMap = readKeyIntMap(businessObject, 'minimumTimeByUser');
+    const maximumTimeByUserMap = readKeyIntMap(businessObject, 'maximumTimeByUser');
+
     return {
       id_model: id_model,
       id_bpmn: businessObject.id,
@@ -265,6 +290,11 @@ function getAllRelevantTasks(bpmnModeler) {
       NumberOfExecutions: numberOfExecutions,
       MinimumTime: minimumTime,
       MaximumTime: maximumTime,
+
+      // >>> NUEVO: per-user
+      minimumTimeByUser: minimumTimeByUserMap,
+      maximumTimeByUser: maximumTimeByUserMap,
+
       UserInstance: instance,
       time: time,
 
@@ -295,6 +325,13 @@ function exportToEsper(bpmnModeler) {
     try {
       const elements = getAllRelevantTasks(bpmnModeler);
       const safe = (s) => String(s ?? '').replace(/"/g, '\\"');
+
+      const serializeIntMap = (obj) => {
+        if (!obj || typeof obj !== 'object') return '';
+        return Object.entries(obj)
+          .map(([k, v]) => `"${safe(k)}": ${Number.isInteger(v) ? v : 0}`)
+          .join(', ');
+      };
 
       let content = '### Esper Rules Export ###\n\n';
 
@@ -344,6 +381,13 @@ function exportToEsper(bpmnModeler) {
           content += `numberOfExecutions=${element.NumberOfExecutions}, `;
           content += `minimumTime=${element.MinimumTime}, `;
           content += `maximumTime=${element.MaximumTime}, `;
+
+          // >>> NUEVO: per-user times como mapas
+          const minMapStr = serializeIntMap(element.minimumTimeByUser);
+          const maxMapStr = serializeIntMap(element.maximumTimeByUser);
+          content += `minimumTimeByUser={${minMapStr}}, `;
+          content += `maximumTimeByUser={${maxMapStr}}, `;
+
           if (element.loopParameter !== 'undefined') {
             content += `loopParameter={"${safe(element.loopParameter)}":${element.AdditionalIntegerParameter}}, `;
           }
@@ -380,7 +424,7 @@ function exportToEsper(bpmnModeler) {
             : '""';
           content += `userWithoutRole=[${userWithoutRole}], `;
 
-          // element.userWithRole aquí es un array de { role, users }
+          // element.userWithRole es un array de { role, users }
           const userWithRole = element.userWithRole
             ? element.userWithRole
                 .map(({ role, users }) => {
@@ -390,8 +434,13 @@ function exportToEsper(bpmnModeler) {
                 })
                 .join(', ')
             : '{}';
+          content += `userWithRole={${userWithRole}}, `;
 
-          content += `userWithRole={${userWithRole}}]\n`;
+          // >>> NUEVO: per-user times a nivel de proceso si existen
+          const minMapStr = serializeIntMap(element.minimumTimeByUser);
+          const maxMapStr = serializeIntMap(element.maximumTimeByUser);
+          content += `minimumTimeByUser={${minMapStr}}, `;
+          content += `maximumTimeByUser={${maxMapStr}}]\n`;
 
         } else if (element.type === 'bpmn:Participant') {
           const userWithoutRole = Array.isArray(element.userWithoutRole)
@@ -402,7 +451,12 @@ function exportToEsper(bpmnModeler) {
             ? element.containedElements.map(el => `"${safe(el)}"`).join(', ')
             : '""';
 
-          content += `frequency=${element.Frequency}, userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}]]\n`;
+          // >>> NUEVO: per-user times a nivel de participant (si venían de processRef)
+          const minMapStr = serializeIntMap(element.minimumTimeByUser);
+          const maxMapStr = serializeIntMap(element.maximumTimeByUser);
+
+          content += `frequency=${element.Frequency}, userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}], `;
+          content += `minimumTimeByUser={${minMapStr}}, maximumTimeByUser={${maxMapStr}}]\n`;
 
         } else {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
