@@ -1,34 +1,36 @@
 const axios = require('axios');
 
 function getAllRelevantTasks(bpmnModeler) {
-  var elementRegistry = bpmnModeler.get('elementRegistry');
-  var definitions = bpmnModeler.get('canvas').getRootElement().businessObject.$parent;
-  var id_model = definitions.diagrams[0].id;
+  const elementRegistry = bpmnModeler.get('elementRegistry');
+  const canvasRoot = bpmnModeler.get('canvas').getRootElement();
+  const definitions = canvasRoot.businessObject.$parent;
+  const id_model = definitions.diagrams[0].id;
 
-  const elements = elementRegistry.filter((e) => true).map((e) => e.businessObject);
-  const keyValuePairs = definitions.rootElements
+  // Todos los BOs para cálculos auxiliares
+  const allBOs = elementRegistry.filter(() => true).map(e => e.businessObject);
+
+  // Defaults globales definidos como model:KeyValuePair en <definitions>
+  const keyValuePairs = (definitions.rootElements || [])
     .filter((el) => el.$type === 'model:KeyValuePair')
-    .map((pair) => ({
-      key: pair.key,
-      value: pair.value,
-    }));
+    .map((pair) => ({ key: pair.key, value: pair.value }));
 
-  elements.forEach((element) => {
-    if (element.$type === 'bpmn:Process') {
-      const businessObject = element;
-      if (!businessObject.userWithRole) {
-        businessObject.userWithRole = {};
-      }
-      keyValuePairs.forEach((pair) => {
-        if (!businessObject.userWithRole[pair.key]) {
-          businessObject.userWithRole[pair.key] = pair.value.split(',').map((v) => v.trim());
-        }
+  // Mapa auxiliar de defaults por Process (NO se escribe en el BO)
+  const defaultsByProcessId = new Map();
+  allBOs.forEach((bo) => {
+    if (bo.$type === 'bpmn:Process') {
+      const current = {};
+      keyValuePairs.forEach(({ key, value }) => {
+        current[key] = String(value || '')
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean);
       });
+      defaultsByProcessId.set(bo.id, current);
     }
   });
 
-  // 👉 incluir también tipos custom
-  var relevantElements = elementRegistry.filter(e =>
+  // Elementos relevantes, incluyendo custom
+  const relevantElements = elementRegistry.filter(e =>
     e.type === 'bpmn:Task' ||
     e.type === 'bpmn:ServiceTask' ||
     e.type === 'bpmn:UserTask' ||
@@ -57,54 +59,41 @@ function getAllRelevantTasks(bpmnModeler) {
   };
 
   return relevantElements.map(e => {
-    var businessObject = e.businessObject;
+    const businessObject = e.businessObject;
 
-    let isMessageStartEvent = e.type === 'bpmn:StartEvent' &&
-      businessObject.eventDefinitions &&
-      businessObject.eventDefinitions.some(def => def.$type === 'bpmn:MessageEventDefinition');
-
-    let isTimerStartEvent = e.type === 'bpmn:StartEvent' &&
-      businessObject.eventDefinitions &&
-      businessObject.eventDefinitions.some(def => def.$type === 'bpmn:TimerEventDefinition');
-
-    let isMessageIntermediateCatchEvent = e.type === 'bpmn:IntermediateCatchEvent' &&
-      businessObject.eventDefinitions &&
-      businessObject.eventDefinitions.some(def => def.$type === 'bpmn:MessageEventDefinition');
-
-    let isTimerIntermediateCatchEvent = e.type === 'bpmn:IntermediateCatchEvent' &&
-      businessObject.eventDefinitions &&
-      businessObject.eventDefinitions.some(def => def.$type === 'bpmn:TimerEventDefinition');
-
-    let isMessageIntermediateThrowEvent = e.type === 'bpmn:IntermediateThrowEvent' &&
-      businessObject.eventDefinitions &&
-      businessObject.eventDefinitions.some(def => def.$type === 'bpmn:MessageEventDefinition');
+    // Tipos enriquecidos para eventos
+    const hasDefs = businessObject.eventDefinitions && businessObject.eventDefinitions.length > 0;
+    const hasDef = (t) => hasDefs && businessObject.eventDefinitions.some(def => def.$type === t);
 
     let type = e.type;
-    if (isMessageStartEvent) {
+    if (e.type === 'bpmn:StartEvent' && hasDef('bpmn:MessageEventDefinition')) {
       type = 'bpmn:MessageStartEvent';
-    } else if (isTimerStartEvent) {
+    } else if (e.type === 'bpmn:StartEvent' && hasDef('bpmn:TimerEventDefinition')) {
       type = 'bpmn:TimerStartEvent';
-    } else if (isMessageIntermediateCatchEvent) {
+    } else if (e.type === 'bpmn:IntermediateCatchEvent' && hasDef('bpmn:MessageEventDefinition')) {
       type = 'bpmn:MessageIntermediateCatchEvent';
-    } else if (isTimerIntermediateCatchEvent) {
+    } else if (e.type === 'bpmn:IntermediateCatchEvent' && hasDef('bpmn:TimerEventDefinition')) {
       type = 'bpmn:TimerIntermediateCatchEvent';
-    } else if (isMessageIntermediateThrowEvent) {
+    } else if (e.type === 'bpmn:IntermediateThrowEvent' && hasDef('bpmn:MessageEventDefinition')) {
       type = 'bpmn:MessageIntermediateThrowEvent';
     }
 
-    var subTasks = [];
-    var subElement = null;
-    var superElement = null;
+    // Relaciones sub/super
+    let subTasks = [];
+    let subElement = null;
+    let superElement = null;
 
     if (e.type === 'bpmn:DataInputAssociation') {
       superElement = businessObject.sourceRef && businessObject.sourceRef.length > 0
         ? businessObject.sourceRef.map(source => source.id).join(', ')
         : 'No Super Element';
+
       const targetTask = elementRegistry.find(el =>
         el.businessObject.dataInputAssociations &&
         el.businessObject.dataInputAssociations.some(assoc => assoc.id === businessObject.id)
       );
       subElement = targetTask ? targetTask.businessObject.id : 'No Sub Element';
+
     } else if (e.type === 'bpmn:DataOutputAssociation') {
       subElement = businessObject.targetRef ? businessObject.targetRef.id : '';
       const parentTask = elementRegistry.find(el =>
@@ -112,19 +101,23 @@ function getAllRelevantTasks(bpmnModeler) {
         el.businessObject.dataOutputAssociations.some(assoc => assoc.id === businessObject.id)
       );
       superElement = parentTask ? [parentTask.businessObject.id].join(', ') : 'No Super Element';
+
     } else if (e.type === 'bpmn:BoundaryEvent' && businessObject.attachedToRef) {
       const attachedTask = businessObject.attachedToRef;
       subElement = attachedTask.outgoing ? attachedTask.outgoing.map(flow => flow.targetRef.id).join(', ') : '';
       superElement = attachedTask.incoming ? attachedTask.incoming.map(flow => flow.sourceRef.id) : [];
+
     } else if (e.type === 'bpmn:SequenceFlow' || e.type === 'bpmn:MessageFlow') {
       subElement = businessObject.targetRef ? businessObject.targetRef.id : '';
       superElement = businessObject.sourceRef ? [businessObject.sourceRef.id] : [];
+
     } else {
       subTasks = businessObject.outgoing ? businessObject.outgoing.map(task => task.targetRef.id) : [];
       subElement = subTasks.join(', ');
       superElement = businessObject.incoming ? businessObject.incoming.map(flow => flow.sourceRef.id) : [];
     }
 
+    // Flags y propiedades varias
     const isServiceTask = e.type === 'bpmn:ServiceTask';
     const isUserTask = e.type === 'bpmn:UserTask';
     const isTask = e.type === 'bpmn:Task' || isUserTask;
@@ -133,17 +126,21 @@ function getAllRelevantTasks(bpmnModeler) {
     const isParticipant = e.type === 'bpmn:Participant';
     const isLane = e.type === 'bpmn:Lane';
     const isSequenceFlow = e.type === 'bpmn:SequenceFlow' || e.type === 'bpmn:MessageFlow';
+
     const percentageOfBranches = isSequenceFlow ? (businessObject.percentageOfBranches || 0) : 0;
 
     let time = null;
-    if (businessObject.eventDefinitions && businessObject.eventDefinitions.length > 0) {
+    if (hasDefs) {
       const timerEventDef = businessObject.eventDefinitions.find(def => def.$type === 'bpmn:TimerEventDefinition');
       if (timerEventDef && timerEventDef.timeDuration) {
         time = timerEventDef.timeDuration.body || '';
       }
     }
 
-    const userTasks = Array.isArray(businessObject.UserTask) ? businessObject.UserTask : [businessObject.UserTask || ''];
+    const userTasks = Array.isArray(businessObject.UserTask)
+      ? businessObject.UserTask
+      : [businessObject.UserTask || ''];
+
     const numberOfExecutions = businessObject.NumberOfExecutions || 1;
     const minimumTime = businessObject.minimumTime || 0;
     const maximumTime = businessObject.maximumTime || 0;
@@ -152,10 +149,10 @@ function getAllRelevantTasks(bpmnModeler) {
     const multiInstance = businessObject.loopCharacteristics?.isSequential ?? 'undefined';
     const AdditionalIntegerParameter = businessObject.AdditionalIntegerParameter || 0;
 
-    let instance = '';  
-    let userWithRole = {};
+    let instance = '';
+    let userWithRoleReturn = {};
     let userWithoutRole = [];
-    let userWithoutRoleSet = new Set();
+    const userWithoutRoleSet = new Set();
     let frequency = 0;
     let containedElements = businessObject.flowNodeRef
       ? businessObject.flowNodeRef.map(node => node.id)
@@ -165,10 +162,11 @@ function getAllRelevantTasks(bpmnModeler) {
       if (businessObject && businessObject.instance !== undefined) {
         instance = businessObject.instance;
       }
+
     } else if (e.type === 'bpmn:Participant') {
       const processRef = businessObject.processRef;
 
-      const participantFrequency = businessObject.frequency || businessObject.get('participantWithoutLane:frequency');
+      const participantFrequency = businessObject.frequency || businessObject.get?.('participantWithoutLane:frequency');
       if (participantFrequency !== undefined) {
         frequency = participantFrequency;
       }
@@ -191,6 +189,7 @@ function getAllRelevantTasks(bpmnModeler) {
         businessObject.userWithoutRole.forEach(role => userWithoutRoleSet.add(role.trim()));
       }
       userWithoutRole = Array.from(userWithoutRoleSet);
+
     } else if (e.type === 'bpmn:Lane') {
       if (businessObject.userWithoutRole) {
         businessObject.userWithoutRole.forEach(role => userWithoutRoleSet.add(role.trim()));
@@ -199,36 +198,67 @@ function getAllRelevantTasks(bpmnModeler) {
         ? businessObject.flowNodeRef.map(node => node.id)
         : [];
       userWithoutRole = Array.from(userWithoutRoleSet);
+
     } else if (e.type === 'bpmn:Process') {
       if (businessObject.instance !== undefined) instance = businessObject.instance;
-      if (businessObject.userWithRole) userWithRole = businessObject.userWithRole;
+
+      // userWithRole puede estar como array de model:KeyValuePair o como objeto plano
+      if (Array.isArray(businessObject.userWithRole)) {
+        userWithRoleReturn = Object.fromEntries(
+          businessObject.userWithRole.map((kv) => [
+            kv.key,
+            String(kv.value || '').split(',').map(s => s.trim()).filter(Boolean)
+          ])
+        );
+      } else if (typeof businessObject.userWithRole === 'object' && businessObject.userWithRole !== null) {
+        userWithRoleReturn = businessObject.userWithRole;
+      }
+
       if (businessObject.userWithoutRole) {
         userWithoutRole = [...new Set(businessObject.userWithoutRole)];
       }
       if (businessObject.frequency !== undefined) frequency = businessObject.frequency;
+
+      // Merge con defaults del <definitions> (sin tocar el BO)
+      const defaults = defaultsByProcessId.get(businessObject.id) || {};
+      userWithRoleReturn = { ...defaults, ...userWithRoleReturn };
+
     } else {
       instance = businessObject.instance || '';
     }
 
-    const isCustomScheduler = e.type === 'custom:Scheduler' || businessObject.$type === 'custom:Scheduler';
+    // custom:Scheduler
+    const isCustomScheduler =
+      e.type === 'custom:Scheduler' || businessObject.$type === 'custom:Scheduler';
+
     const rawUrl = isCustomScheduler
-      ? (businessObject.url ?? (businessObject.get ? businessObject.get('custom:url') : '') ?? '')
+      ? (businessObject.url ?? businessObject.get?.('custom:url') ?? '')
       : '';
-    const schedulerUrl = isCustomScheduler && isValidUrl(rawUrl) ? rawUrl : '';
+    const schedulerUrl = isValidUrl(rawUrl) ? rawUrl : '';
+
+    const fileName = isCustomScheduler
+      ? (businessObject.fileName ?? businessObject.get?.('custom:fileName') ?? '')
+      : '';
+    const fileContent = isCustomScheduler
+      ? (businessObject.fileContent ?? businessObject.get?.('custom:fileContent') ?? '')
+      : '';
 
     return {
       id_model: id_model,
       id_bpmn: businessObject.id,
       name: businessObject.name || '',
       type: type,
+
       Mth: isServiceTask ? (businessObject.Mth || 0) : 0,
       P: isServiceTask ? (businessObject.P || 0) : 0,
       User: isServiceTask ? (businessObject.User || '') : '',
       UserTask: (isTask || isUserTask) ? (userTasks.join(', ') || '') : '',
+
       Log: businessObject.Log || '',
       SubTasks: subTasks,
       subElement: subElement,
       superElement: superElement,
+
       Instances: isProcess || isCollaboration ? (instance || 0) : 0,
       Frequency: isProcess || isParticipant ? (frequency || 0) : 0,
       PercentageOfBranches: percentageOfBranches,
@@ -237,17 +267,25 @@ function getAllRelevantTasks(bpmnModeler) {
       MaximumTime: maximumTime,
       UserInstance: instance,
       time: time,
+
       userWithoutRole: (isProcess || isLane || isParticipant) ? userWithoutRole : '',
-      userWithRole: Object.entries(businessObject.userWithRole || {}).map(([role, users]) => ({
+
+      // devolvemos como array de { role, users } (sin tocar BO)
+      userWithRole: Object.entries(userWithRoleReturn).map(([role, users]) => ({
         role,
         users: Array.isArray(users) ? users : [users]
       })),
+
       loopParameter: loopParameter,
       loopCharacteristics: loopCharacteristics,
       multiInstance: multiInstance,
       AdditionalIntegerParameter: AdditionalIntegerParameter,
       containedElements: containedElements,
-      Url: schedulerUrl
+
+      // custom:Scheduler
+      Url: schedulerUrl,
+      FileName: fileName,
+      FileContent: fileContent
     };
   });
 }
@@ -256,117 +294,119 @@ function exportToEsper(bpmnModeler) {
   return new Promise((resolve, reject) => {
     try {
       const elements = getAllRelevantTasks(bpmnModeler);
+      const safe = (s) => String(s ?? '').replace(/"/g, '\\"');
 
       let content = '### Esper Rules Export ###\n\n';
+
       elements.forEach(element => {
+        // El tipo enriquecido ya viene calculado en getAllRelevantTasks (e.g., 'bpmn:MessageStartEvent')
+        content += `Element: [type=${element.type}, `;
+        content += `name="${safe(element.name) || 'Unnamed'}", `;
+        content += `id_bpmn="${safe(element.id_bpmn) || 'Unknown'}", `;
 
-        if (element.type === 'bpmn:StartEvent' && 
-            element.businessObject &&
-            element.businessObject.eventDefinitions &&
-            element.businessObject.eventDefinitions.length > 0 &&
-            element.businessObject.eventDefinitions[0].$type === 'bpmn:MessageEventDefinition') {
-          content += `Element: [type=bpmn:MessageStartEvent, `;
-        } else {
-          content += `Element: [type=${element.type}, `;
-        }
-
-        content += `name="${element.name || 'Unnamed'}", `;
-        content += `id_bpmn="${element.id_bpmn || 'Unknown'}", `; 
-       
         if (element.time) {
           content += `time=${element.time}, `;
         }
 
-        if (element.type === 'bpmn:SequenceFlow' || element.type === 'bpmn:MessageFlow' ||
-          element.type === 'bpmn:DataObjectReference' || element.type === 'bpmn:BoundaryEvent' ||
-          element.type === 'bpmn:DataInputAssociation' || element.type === 'bpmn:DataOutputAssociation') {
-
+        if (
+          element.type === 'bpmn:SequenceFlow' ||
+          element.type === 'bpmn:MessageFlow' ||
+          element.type === 'bpmn:DataObjectReference' ||
+          element.type === 'bpmn:BoundaryEvent' ||
+          element.type === 'bpmn:DataInputAssociation' ||
+          element.type === 'bpmn:DataOutputAssociation'
+        ) {
           if (element.PercentageOfBranches && element.PercentageOfBranches !== 'N/A') {
             content += `percentageOfBranches=${element.PercentageOfBranches}, `;
           }
-        
-          const superElement = typeof element.superElement === 'string' 
-            ? element.superElement 
+
+          const superElement = typeof element.superElement === 'string'
+            ? element.superElement
             : (Array.isArray(element.superElement) ? element.superElement.join(', ') : 'No Super Element');
+
           const subElement = element.subElement || 'No Sub Element';
 
-          content += `superElement="${superElement}", `;
-          content += `subElement="${subElement}"]\n`;
+          content += `superElement="${safe(superElement)}", `;
+          content += `subElement="${safe(subElement)}"]\n`;
 
-        } else if (element.type === 'bpmn:Task' || element.type === 'bpmn:UserTask' || element.type === 'bpmn:ManualTask'
-          || element.type === 'bpmn:SendTask' || element.type === 'bpmn:ReceiveTask' || element.type === 'bpmn:BusinessRuleTask'
-          || element.type === 'bpmn:ScriptTask' || element.type === 'bpmn:CallActivity' || element.type === 'bpmn:ServiceTask'
+        } else if (
+          element.type === 'bpmn:Task' ||
+          element.type === 'bpmn:UserTask' ||
+          element.type === 'bpmn:ManualTask' ||
+          element.type === 'bpmn:SendTask' ||
+          element.type === 'bpmn:ReceiveTask' ||
+          element.type === 'bpmn:BusinessRuleTask' ||
+          element.type === 'bpmn:ScriptTask' ||
+          element.type === 'bpmn:CallActivity' ||
+          element.type === 'bpmn:ServiceTask'
         ) {
-          content += `userTask="${element.UserTask || '""'}", `;
+          content += `userTask="${safe(element.UserTask) || '""'}", `;
           content += `numberOfExecutions=${element.NumberOfExecutions}, `;
           content += `minimumTime=${element.MinimumTime}, `;
           content += `maximumTime=${element.MaximumTime}, `;
-          if(element.loopParameter !== 'undefined'){
-            content += `loopParameter={"${element.loopParameter}":${element.AdditionalIntegerParameter}}, `;
+          if (element.loopParameter !== 'undefined') {
+            content += `loopParameter={"${safe(element.loopParameter)}":${element.AdditionalIntegerParameter}}, `;
           }
           if (element.loopCharacteristics?.isSequential !== undefined) {
             content += `multiInstanceType="${element.loopCharacteristics.isSequential ? 'true' : 'false'}", `;
-          }               
+          }
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
-          content += `subTask="${subTasks}"]\n`;
+          content += `subTask="${safe(subTasks)}"]\n`;
 
         } else if (element.type === 'custom:Scheduler') {
-          content += `url="${element.Url || ''}"]\n`;
+          content += `url="${safe(element.Url) || ''}", `;
+          content += `fileName="${safe(element.FileName) || ''}"]\n`;
 
         } else if (element.type === 'bpmn:Collaboration') {
           content += `instances=${element.Instances}]\n`;
 
         } else if (element.type === 'bpmn:Lane') {
           const userWithoutRole = Array.isArray(element.userWithoutRole)
-            ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
+            ? element.userWithoutRole.map(user => `"${safe(user)}"`).join(', ')
             : '""';
-          
+
           const containedElements = element.containedElements && element.containedElements.length > 0
-            ? element.containedElements.map(el => `"${el}"`).join(', ')
+            ? element.containedElements.map(el => `"${safe(el)}"`).join(', ')
             : '""';
-          
+
           content += `userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}]]\n`;
 
         } else if (element.type === 'bpmn:Process') {
           content += `instances=${element.Instances}, `;
           content += `frequency=${element.Frequency}, `;
-        
-          const userWithoutRole = Array.isArray(element.userWithoutRole) 
-            ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
+
+          const userWithoutRole = Array.isArray(element.userWithoutRole)
+            ? element.userWithoutRole.map(user => `"${safe(user)}"`).join(', ')
             : '""';
           content += `userWithoutRole=[${userWithoutRole}], `;
-        
+
+          // element.userWithRole aquí es un array de { role, users }
           const userWithRole = element.userWithRole
             ? element.userWithRole
-                .map((pair) => {
-                  if (!pair.key || !pair.value) {
-                    console.warn('Formato inesperado en ModdleElement:', pair);
-                    return '';
-                  }
-                  const role = pair.key;
-                  const users = pair.value.split(',').map((u) => u.trim());
-                  return `"${role}": [${users.map((u) => `"${u}"`).join(', ')}]`;
+                .map(({ role, users }) => {
+                  const r = safe(role);
+                  const us = (Array.isArray(users) ? users : [users]).map(u => `"${safe(u)}"`).join(', ');
+                  return `"${r}": [${us}]`;
                 })
-                .filter((entry) => entry !== '')
                 .join(', ')
             : '{}';
-        
+
           content += `userWithRole={${userWithRole}}]\n`;
 
         } else if (element.type === 'bpmn:Participant') {
           const userWithoutRole = Array.isArray(element.userWithoutRole)
-            ? element.userWithoutRole.map(user => `"${user}"`).join(', ')
+            ? element.userWithoutRole.map(user => `"${safe(user)}"`).join(', ')
             : '""';
-        
-          const containedElements = Array.isArray(element.containedElements) 
-            ? element.containedElements.map(el => `"${el}"`).join(', ')
+
+          const containedElements = Array.isArray(element.containedElements)
+            ? element.containedElements.map(el => `"${safe(el)}"`).join(', ')
             : '""';
-          
+
           content += `frequency=${element.Frequency}, userWithoutRole=[${userWithoutRole}], containedElements=[${containedElements}]]\n`;
 
         } else {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
-          content += `subTask="${subTasks}"]\n`;
+          content += `subTask="${safe(subTasks)}"]\n`;
         }
       });
 
