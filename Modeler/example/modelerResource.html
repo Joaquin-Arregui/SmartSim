@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Modeler</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+</head>
+<body>
+  <div class="canvas-parent">
+    <div id="canvas" class="canvas"></div>
+    <div id="properties-panel" class="properties-panel open"></div>
+  </div>
+
+  <div class="properties-panel-resizer" id="properties-panel-resizer" title="Toggle properties panel" draggable="true">
+    <div class="properties-panel-resize-handle"></div>
+  </div>
+
+  <style>
+    html, body, #canvas, #canvas > div { height:100%; margin:0; overflow:hidden; }
+    .icon-custom-triangle { background:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22%2352B415%22 width=%22270%22 height=%22240%22%3E%3Cpath d=%22M8,40 l 15,-27 l 15,27 z%22/%3E%3C/svg%3E'); }
+    .icon-custom-circle { background:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22%23ffc800%22 viewBox=%220 0 120 120%22%3E%3Ccircle cx=%2260%22 cy=%2260%22 r=%2240%22/%3E%3C/svg%3E'); }
+  </style>
+
+  <div class="links bottom-links">
+    <button class="link active" id="js-simulate" title="Simulate BPMN model">Simulate</button>
+    <button class="link active" id="js-continue" title="Continue with the last simulation">Last simulation</button>
+  </div>
+
+  <div class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-tabs">
+        <button class="tab-button active" data-tab="tab1">Simulation results</button>
+        <button class="tab-button" data-tab="tab2">Heatmap</button>
+        <button class="tab-button" data-tab="tab3">Chatbot</button>
+      </div>
+      <div class="tab-content active" id="tab1-content"><pre id="modal-content-tab1">Results of the simulation</pre></div>
+      <div class="tab-content" id="tab2-content"><div id="heatmap-container"></div></div>
+      <div class="tab-content" id="tab3-content">
+        <select id="chatbot-selector">
+          <option value="gpt">GPT</option>
+          <option value="llama">LLaMA</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+        <div class="chatbot-body" id="modal-content-tab3"></div>
+        <div class="modal-content-tab3-footer">
+          <input type="text" id="chatbot-input" placeholder="Type your message..." />
+          <button id="send-chatbot">Send</button>
+        </div>
+      </div>
+      <button id="close-modal">Close</button>
+    </div>
+  </div>
+
+  <!-- Igual que modeler.html: cargar el BUNDLE de Webpack -->
+  <script type="module" src="./dist/modelerResource.js"></script>
+</body>
+</html>
