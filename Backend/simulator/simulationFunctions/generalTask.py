@@ -53,7 +53,7 @@ f'''
         start_standBy_data = env.now
         while not all((dataObject, name) in data for dataObject in dataObjects):
             yield env.timeout(1)
-        if env.now < start_standBy_data:
+        if env.now > start_standBy_data:
             simulationResults[name].append(
 f'''
         <event>

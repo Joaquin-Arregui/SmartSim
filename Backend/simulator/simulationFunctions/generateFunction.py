@@ -3,6 +3,7 @@ from simulator.simulationFunctions.gateways import exclusiveGateway, parallelGat
 from simulator.simulationFunctions.generalTask import generalTask
 from simulator.simulationFunctions.receiveTask import receiveTask
 from simulator.simulationFunctions.sendTask import sendTask
+from simulator.simulationFunctions.schedule import scheduler
 
 GENERAL_TASKS = {
     "BPMNTask",
@@ -20,6 +21,7 @@ SPECIFIC_HANDLERS = {
     "BPMNInclusiveGateway":                 inclusiveGateway,
     "BPMNSendTask":                         sendTask,
     "BPMNReceiveTask":                      receiveTask,
+    "BPMNScheduler":                        scheduler,
     "BPMNIntermediateThrowEvent":           intermediateThrowEvent,
     "BPMNMessageIntermediateCatchEvent":    messageIntermediateCatchEvent,
     "BPMNMessageIntermediateThrowEvent":    messageIntermediateThrowEvent,

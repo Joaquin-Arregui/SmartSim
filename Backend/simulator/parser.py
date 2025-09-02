@@ -5,7 +5,7 @@ from simulator.models.startEventModels import BPMNStartEvent, BPMNMessageStartEv
 from simulator.models.gatewayModels import BPMNExclusiveGateway, BPMNInclusiveGateway, BPMNParallelGateway
 from simulator.models.taskModels import BPMNTask, BPMNUserTask, BPMNSendTask, BPMNReceiveTask, BPMNManualTask, BPMNBusinessRuleTask, BPMNScriptTask, BPMNCallActivity, BPMNServiceTask
 from simulator.models.endEventModels import BPMNEndEvent
-from simulator.models.intermediateEventModels import BPMNIntermediateThrowEvent, BPMNMessageIntermediateCatchEvent, BPMNMessageIntermediateThrowEvent, BPMNTimerIntermediateCatchEvent
+from simulator.models.intermediateEventModels import BPMNScheduler, BPMNIntermediateThrowEvent, BPMNMessageIntermediateCatchEvent, BPMNMessageIntermediateThrowEvent, BPMNTimerIntermediateCatchEvent
 from simulator.models.subprocessModels import BPMNSubProcess, BPMNTransaction
 
 def parse_bpmn_elements(file_content: str):
@@ -325,6 +325,12 @@ def parse_bpmn_elements(file_content: str):
                     multiInstanceType = None
                 subTask = re.search(r'subTask="([^"]+)"', line).group(1)
                 element = BPMNServiceTask(name, id_bpmn, bpmn_type, userTask, numberOfExecutions, minimumTime, maximumTime, loopParameter, multiInstanceType, subTask)
+
+            elif element_type == "Scheduler":
+                api = re.search(r'api="([^"]+)"', line).group(1)
+                properties = re.search(r'properties="([^"]+)"', line).group(1)
+                subTask = re.search(r'subTask="([^"]+)"', line).group(1)
+                element = BPMNScheduler(name, id_bpmn, bpmn_type, api, properties, subTask)
 
             elif element_type == "IntermediateThrowEvent":
                 subTask = re.search(r'subTask="([^"]+)"', line).group(1)
