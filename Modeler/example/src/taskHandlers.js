@@ -413,6 +413,33 @@ function exportToEsper(bpmnModeler) {
   });
 }
 
+async function exportCsvFromModel(bpmnModeler) {
+  const elementRegistry = bpmnModeler.get('elementRegistry');
+  let csvContent = '';
+  let fileName = 'data.csv';
+
+  elementRegistry.forEach(el => {
+    const bo = el.businessObject;
+    if (bo && bo.get) {
+      const content = bo.get('custom:fileContent');
+      const name = bo.get('custom:fileName');
+      if (content && name) {
+        csvContent = content;
+        fileName = name;
+      }
+    }
+  });
+
+  if (!csvContent) {
+    console.warn('[exportCsvFromModel] No CSV found in model.');
+    return null;
+  }
+
+  return { csvContent, fileName };
+}
+
+
 module.exports = {
   exportToEsper
+, exportCsvFromModel
 };

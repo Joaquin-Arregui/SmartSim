@@ -26,7 +26,7 @@ import DOMPurify from 'dompurify';
 
 import CustomModeler from '../../custom-modeler';
 
-import { exportToEsper } from './taskHandlers';
+import { exportToEsper,exportCsvFromModel  } from './taskHandlers';
 
 $(function () {
   // ----------------------------
@@ -176,49 +176,60 @@ $(function () {
   }
 
   $('#js-simulate').off('click').on('click', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
 
-    try {
-      await sanitizeModel(bpmnModeler);
-      hardCleanDefinitions(bpmnModeler);
+  try {
+    await sanitizeModel(bpmnModeler);
+    hardCleanDefinitions(bpmnModeler);
 
-      const rawXML = await exportDefinitionsXML(bpmnModeler); // XML con custom
-      const diagramXML = prepareXmlForServer(rawXML);          // XML limpio para backend
-      const content = await exportToEsper(bpmnModeler);
+    const rawXML = await exportDefinitionsXML(bpmnModeler);
+    const diagramXML = prepareXmlForServer(rawXML);
+    const content = await exportToEsper(bpmnModeler);
 
-      const response = await fetch('http://localhost:3000/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content,
-          diagramXML,
-          filename: 'esperTasks.txt',
-          diagramfilename: 'diagram.bpmn'
-        })
-      });
+    // 🚀 nuevo: obtener CSV
+    const csvData = await exportCsvFromModel(bpmnModeler);
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(`There has been an error in the simulation: ${response.statusText}${text ? ' - ' + text : ''}`);
-      }
+    const body = {
+      content,
+      diagramXML,
+      filename: 'esperTasks.txt',
+      diagramfilename: 'diagram.bpmn'
+    };
 
-      const data = await response.json();
-
-      await bpmnModeler.importXML(data.heatMap);
-      const { svg } = await bpmnModeler.saveSVG();
-      await bpmnModeler.importXML(rawXML); // volver a XML original
-
-      document.querySelector('#modal-content-tab1').textContent = data.simulation;
-      document.querySelector('#heatmap-container').innerHTML = svg;
-      document.querySelector('#modal-content-tab3').innerHTML = '';
-      appendMessage('bot', data.reply);
-      document.querySelector('.modal-overlay').style.display = 'block';
-    } catch (err) {
-      console.error('Error during the simulation:', err);
+    if (csvData) {
+      body.csv = csvData.csvContent;     // el contenido del CSV
+      body.csvfilename = csvData.fileName; // el nombre original
     }
-  });
+
+    const response = await fetch('http://localhost:3000/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`There has been an error in the simulation: ${response.statusText}${text ? ' - ' + text : ''}`);
+    }
+
+    const data = await response.json();
+
+    await bpmnModeler.importXML(data.heatMap);
+    const { svg } = await bpmnModeler.saveSVG();
+    await bpmnModeler.importXML(rawXML);
+
+    document.querySelector('#modal-content-tab1').textContent = data.simulation;
+    document.querySelector('#heatmap-container').innerHTML = svg;
+    document.querySelector('#modal-content-tab3').innerHTML = '';
+    appendMessage('bot', data.reply);
+    document.querySelector('.modal-overlay').style.display = 'block';
+  } catch (err) {
+    console.error('Error during the simulation:', err);
+  }
+});
+
 
   $('#js-continue').off('click').on('click', (e) => {
     e.preventDefault();

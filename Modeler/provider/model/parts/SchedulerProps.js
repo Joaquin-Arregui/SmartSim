@@ -72,48 +72,82 @@ function fileSelectorFunction(props) {
   const fileName = (bo?.fileName ?? bo?.get?.('custom:fileName')) || '';
   const hasFile = !!fileName;
 
+  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB (ajusta)
+  const isCsvMime = (type) => type === 'text/csv' || type === 'application/vnd.ms-excel';
+
   const onFileChange = async (evt) => {
     const file = evt?.target?.files?.[0];
     if (!file) return;
-    const dataUrl = await readAsDataURL(file);
+
+    if (file.size > MAX_BYTES) {
+      alert(translate('CSV demasiado grande (máx 2MB).'));
+      return;
+    }
+    if (!isCsvMime(file.type) && !file.name.toLowerCase().endsWith('.csv')) {
+      alert(translate('Selecciona un archivo .csv.'));
+      return;
+    }
+
+    const text = await readAsText(file); // <-- OBTIENE EL CSV COMO TEXTO
+
+    // (opcional) métricas rápidas para depurar
+    const lines = text.split(/\r?\n/);
+    const header = (lines[0] || '').trim();
+    const rows = Math.max(0, lines.length - (header ? 1 : 0));
 
     modeling.updateProperties(element, {
       'custom:fileName': file.name,
-      'custom:fileContent': dataUrl
+      'custom:fileSize': file.size,
+      'custom:fileContent': text,     // <-- AQUÍ VA EL CSV COMPLETO
+      'custom:fileHeader': header,    // opcional
+      'custom:fileRows': rows         // opcional
     });
   };
 
   const clearFile = () => {
     modeling.updateProperties(element, {
       'custom:fileName': '',
-      'custom:fileContent': ''
+      'custom:fileSize': '',
+      'custom:fileContent': '',
+      'custom:fileHeader': '',
+      'custom:fileRows': ''
     });
   };
 
   return html`
     <div class="bio-properties-panel-entry" data-entry-id=${id}>
       <label class="bio-properties-panel-label" for=${id}>
-        ${translate('File')}
+        ${translate('CSV')}
       </label>
       <div class="bio-properties-panel-input">
         <input
           id=${id}
           type="file"
+          accept=".csv,text/csv"
           onChange=${onFileChange}
         />
         ${hasFile && html`
           <div class="bio-properties-panel-helper">
-            <span>${translate('Selected file')}: <strong>${fileName}</strong></span>
+            <span>${translate('Seleccionado')}: <strong>${fileName}</strong></span>
             <button
               type="button"
               class="bio-properties-panel-button"
               onClick=${clearFile}
-            >${translate('Clear')}</button>
+            >${translate('Quitar')}</button>
           </div>
         `}
       </div>
     </div>
   `;
+}
+
+function readAsText(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(String(reader.result ?? ''));
+    reader.onerror = rej;
+    reader.readAsText(file, 'utf-8');
+  });
 }
 
 function readAsDataURL(file) {
