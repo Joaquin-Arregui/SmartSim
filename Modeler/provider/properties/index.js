@@ -1,4 +1,9 @@
+// providerResource/index.js
+const PropertiesProviderResource =
+  require('./PropertiesProviderResource').default
+  || require('./PropertiesProviderResource');
+
 module.exports = {
-  __init__: [ 'propertiesProvider' ],
-  propertiesProvider: [ 'type', require('./PropertiesProvider').default ]
+  __init__: ['propertiesProviderResource'],
+  propertiesProviderResource: ['type', PropertiesProviderResource]
 };
