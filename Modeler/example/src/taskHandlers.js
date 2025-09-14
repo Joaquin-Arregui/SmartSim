@@ -88,17 +88,21 @@ function getAllRelevantTasks(bpmnModeler) {
     else if (t0 === 'bpmn:IntermediateCatchEvent' && hasDef('bpmn:TimerEventDefinition')) type = 'bpmn:TimerIntermediateCatchEvent';
     else if (t0 === 'bpmn:IntermediateThrowEvent' && hasDef('bpmn:MessageEventDefinition')) type = 'bpmn:MessageIntermediateThrowEvent';
 
+    // Normalización explícita: custom:scheduler -> Scheduler
+    const isCustomSchedulerRaw =
+      String(t0).toLowerCase() === 'custom:scheduler' ||
+      String(bo.$type || '').toLowerCase() === 'custom:scheduler';
+    if (isCustomSchedulerRaw) type = 'Scheduler';
+
     // Relaciones super/sub + SubTasks
     let subTasks = [];
     let subElement = 'No Sub Element';
     let superElement = 'No Super Element';
 
     if (t0 === 'bpmn:DataInputAssociation') {
-      // sourceRef es array de DataAssociation
       const srcIds = ids(bo.sourceRef);
       superElement = srcIds.length ? srcIds.join(', ') : 'No Super Element';
 
-      // target es la task que contiene esta association en su array
       const targetTask = allElems.find((el) =>
         arr(el?.businessObject?.dataInputAssociations).some((assoc) => assoc?.id === bo.id)
       );
@@ -125,7 +129,6 @@ function getAllRelevantTasks(bpmnModeler) {
       superElement = sId ? [sId] : 'No Super Element';
 
     } else {
-      // nodos normales
       const outIds = arr(bo.outgoing).map((f) => safeId(f?.targetRef)).filter(Boolean);
       subTasks = outIds;
       subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
@@ -220,18 +223,25 @@ function getAllRelevantTasks(bpmnModeler) {
       instance = bo.instance || '';
     }
 
-    // custom:Scheduler
-    const isCustomScheduler = (t0 === 'custom:Scheduler' || bo.$type === 'custom:Scheduler');
-    const rawUrl = isCustomScheduler ? (bo.url ?? bo.get?.('custom:url') ?? '') : '';
-    const schedulerUrl = isValidUrl(rawUrl) ? rawUrl : '';
-    const fileName = isCustomScheduler ? (bo.fileName ?? bo.get?.('custom:fileName') ?? '') : '';
-    const fileContent = isCustomScheduler ? (bo.fileContent ?? bo.get?.('custom:fileContent') ?? '') : '';
+    // --- Scheduler (normalizado) ---
+    const isCustomScheduler =
+      type === 'Scheduler' ||
+      String(t0).toLowerCase() === 'custom:scheduler' ||
+      String(bo.$type || '').toLowerCase() === 'custom:scheduler';
+
+    // Helper para leer propiedades tolerando variantes y namespaces custom:
+    const getBO = (k) => bo?.[k] ?? bo?.get?.(k) ?? bo?.get?.(`custom:${k}`) ?? '';
+
+    // url → api, sin contentFile
+    const rawApi = isCustomScheduler ? (getBO('url')) : '';
+    const api = isValidUrl(rawApi) ? rawApi : '';
+    const fileName = isCustomScheduler ? (getBO('fileName') ?? getBO('filename')) : '';
 
     return {
       id_model: id_model,
       id_bpmn: bo.id || e.id || 'Unknown',
       name: bo.name || e.name || '',
-      type,
+      type, // 'Scheduler' si era custom:scheduler
 
       Mth: isServiceTask ? (bo.Mth || 0) : 0,
       P: isServiceTask ? (bo.P || 0) : 0,
@@ -264,10 +274,8 @@ function getAllRelevantTasks(bpmnModeler) {
       multiInstance,
       AdditionalIntegerParameter,
       containedElements,
-
-      Url: schedulerUrl,
-      FileName: fileName,
-      FileContent: fileContent
+      Api: api,
+      FileName: fileName
     };
   });
 }
@@ -282,7 +290,7 @@ function exportToEsper(bpmnModeler) {
       let content = '### Esper Rules Export ###\n\n';
 
       elements.forEach(element => {
-        // El tipo enriquecido ya viene calculado en getAllRelevantTasks (e.g., 'bpmn:MessageStartEvent')
+        // El tipo enriquecido ya viene calculado en getAllRelevantTasks (e.g., 'bpmn:MessageStartEvent' o 'Scheduler')
         content += `Element: [type=${element.type}, `;
         content += `name="${safe(element.name) || 'Unnamed'}", `;
         content += `id_bpmn="${safe(element.id_bpmn) || 'Unknown'}", `;
@@ -327,7 +335,7 @@ function exportToEsper(bpmnModeler) {
           content += `numberOfExecutions=${element.NumberOfExecutions}, `;
           content += `minimumTime=${element.MinimumTime}, `;
           content += `maximumTime=${element.MaximumTime}, `;
-          if (element.loopParameter !== 'undefined') {
+          if (element.loopParameter !== undefined && element.loopParameter !== null && element.loopParameter !== 'undefined') {
             content += `loopParameter={"${safe(element.loopParameter)}":${element.AdditionalIntegerParameter}}, `;
           }
           if (element.loopCharacteristics?.isSequential !== undefined) {
@@ -336,8 +344,9 @@ function exportToEsper(bpmnModeler) {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
           content += `subTask="${safe(subTasks)}"]\n`;
 
-        } else if (element.type === 'custom:Scheduler') {
-          content += `url="${safe(element.Url) || ''}", `;
+        // ── Scheduler (normalizado) ──────────────────────────────────────────────
+        } else if (element.type === 'Scheduler') {
+          content += `api="${safe(element.Api) || ''}", `;
           content += `fileName="${safe(element.FileName) || ''}"]\n`;
 
         } else if (element.type === 'bpmn:Collaboration') {
@@ -363,7 +372,7 @@ function exportToEsper(bpmnModeler) {
             : '""';
           content += `userWithoutRole=[${userWithoutRole}], `;
 
-          // element.userWithRole aquí es un array de { role, users }
+          // element.userWithRole es un array de { role, users }
           const userWithRole = element.userWithRole
             ? element.userWithRole
                 .map(({ role, users }) => {
