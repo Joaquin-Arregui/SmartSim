@@ -128,13 +128,25 @@ function getAllRelevantTasks(bpmnModeler) {
       const sId = safeId(bo.sourceRef);
       superElement = sId ? [sId] : 'No Super Element';
 
-    } else {
-      const outIds = arr(bo.outgoing).map((f) => safeId(f?.targetRef)).filter(Boolean);
-      subTasks = outIds;
-      subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
-      const inIds = arr(bo.incoming).map((f) => safeId(f?.sourceRef)).filter(Boolean);
-      superElement = inIds.length ? inIds : 'No Super Element';
-    }
+   } else {
+  // Fallbacks: si el BO no es FlowNode (p.ej. custom:Scheduler), usa e.outgoing/e.incoming
+  const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
+  const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
+
+  const outIds = rawOutgoing
+    .map((f) => safeId(f?.targetRef || f?.target || f?.businessObject?.targetRef))
+    .filter(Boolean);
+
+  subTasks = outIds;
+  subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
+
+  const inIds = rawIncoming
+    .map((f) => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
+    .filter(Boolean);
+
+  superElement = inIds.length ? inIds : 'No Super Element';
+}
+
 
     // Otros campos
     const isServiceTask = t0 === 'bpmn:ServiceTask';
@@ -344,10 +356,15 @@ function exportToEsper(bpmnModeler) {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
           content += `subTask="${safe(subTasks)}"]\n`;
 
-        // ── Scheduler (normalizado) ──────────────────────────────────────────────
         } else if (element.type === 'Scheduler') {
+          const ids = (Array.isArray(element.SubTasks) && element.SubTasks.length)
+            ? element.SubTasks.map(id => `"${safe(id)}"`)
+            : ['"No SubTasks"'];
+
           content += `api="${safe(element.Api) || ''}", `;
+          content += `subTask=${ids.join(', ')}, `;
           content += `fileName="${safe(element.FileName) || ''}"]\n`;
+
 
         } else if (element.type === 'bpmn:Collaboration') {
           content += `instances=${element.Instances}]\n`;
