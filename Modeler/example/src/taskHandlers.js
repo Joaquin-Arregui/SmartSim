@@ -13,11 +13,50 @@ function getAllRelevantTasks(bpmnModeler) {
     ? elementRegistry.getAll()
     : [];
 
-  // helpers
+  // ===== Helpers (declarados una sola vez) =====
   const arr = (x) => Array.isArray(x) ? x : (x == null ? [] : [x]);
   const safeId = (x) => x?.id || x?.businessObject?.id || undefined;
   const ids = (xs) => arr(xs).filter(Boolean).map((y) => safeId(y)).filter(Boolean);
   const safeBO = (e) => e?.businessObject || null;
+
+  const getBounds = (el) => {
+    if (!el) return null;
+    if (Number.isFinite(el.x) && Number.isFinite(el.y) &&
+        Number.isFinite(el.width) && Number.isFinite(el.height)) {
+      return { x: el.x, y: el.y, width: el.width, height: el.height };
+    }
+    const di = el.di || (el.gfx && el.gfx.data && el.gfx.data.element && el.gfx.data.element.di) || null;
+    if (di && di.bounds) {
+      return { x: di.bounds.x, y: di.bounds.y, width: di.bounds.width, height: di.bounds.height };
+    }
+    return null;
+  };
+
+  const pointIn = (pt, b, tol = 40) =>
+    !!(pt && b &&
+      pt.x >= (b.x - tol) && pt.x <= (b.x + b.width + tol) &&
+      pt.y >= (b.y - tol) && pt.y <= (b.y + b.height + tol));
+
+  const isFlow = (el) => {
+    const tp = el?.type || el?.businessObject?.$type || '';
+    return tp === 'bpmn:SequenceFlow' || tp === 'bpmn:MessageFlow';
+  };
+
+  const isLabel = (el) => el?.type === 'label' || !!el?.labelTarget;
+
+  const isFlowNodeCandidate = (el) => {
+    if (!el) return false;
+    if (isFlow(el) || isLabel(el)) return false;
+    const tp = el?.businessObject?.$type || el?.type || '';
+    // descarta contenedores
+    if (tp === 'bpmn:Participant' || tp === 'bpmn:Lane' || tp === 'bpmn:Collaboration' || tp === 'bpmn:Process') return false;
+    return true; // tasks, events, gateways, custom (Scheduler)
+  };
+
+  const isValidUrl = (v) => {
+    if (!v || typeof v !== 'string' || !v.trim()) return false;
+    try { new URL(v); return true; } catch { return false; }
+  };
 
   // Defaults model:KeyValuePair
   const keyValuePairs = arr(definitions.rootElements)
@@ -67,11 +106,6 @@ function getAllRelevantTasks(bpmnModeler) {
       t.startsWith('custom:')
     );
   });
-
-  const isValidUrl = (v) => {
-    if (!v || typeof v !== 'string' || !v.trim()) return false;
-    try { new URL(v); return true; } catch { return false; }
-  };
 
   return relevantElements.map((e) => {
     const bo = safeBO(e) || {};
@@ -124,29 +158,94 @@ function getAllRelevantTasks(bpmnModeler) {
       superElement = inIds.length ? inIds : 'No Super Element';
 
     } else if (t0 === 'bpmn:SequenceFlow' || t0 === 'bpmn:MessageFlow') {
-      subElement = safeId(bo.targetRef) || 'No Sub Element';
-      const sId = safeId(bo.sourceRef);
-      superElement = sId ? [sId] : 'No Super Element';
+      // Fallbacks habituales
+      let src = bo.sourceRef || e.source || e.businessObject?.sourceRef;
+      let tgt = bo.targetRef || e.target || e.businessObject?.targetRef;
 
-   } else {
-  // Fallbacks: si el BO no es FlowNode (p.ej. custom:Scheduler), usa e.outgoing/e.incoming
-  const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
-  const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
+      let srcId = safeId(src);
+      let tgtId = safeId(tgt);
 
-  const outIds = rawOutgoing
-    .map((f) => safeId(f?.targetRef || f?.target || f?.businessObject?.targetRef))
-    .filter(Boolean);
+      // Waypoints → bbox si falta target/src (útil para custom:Scheduler)
+      if ((!tgtId || tgtId === 'undefined') && Array.isArray(e.waypoints) && e.waypoints.length) {
+        const last = e.waypoints[e.waypoints.length - 1];
+        const hitTgt = allElems.find(el => {
+          if (isFlow(el)) return false;
+          const b = getBounds(el);
+          return pointIn(last, b);
+        });
+        tgtId = safeId(hitTgt) || tgtId;
+      }
 
-  subTasks = outIds;
-  subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
+      if ((!srcId || srcId === 'undefined') && Array.isArray(e.waypoints) && e.waypoints.length) {
+        const first = e.waypoints[0];
+        const hitSrc = allElems.find(el => {
+          if (isFlow(el)) return false;
+          const b = getBounds(el);
+          return pointIn(first, b);
+        });
+        srcId = safeId(hitSrc) || srcId;
+      }
 
-  const inIds = rawIncoming
-    .map((f) => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
-    .filter(Boolean);
+      subElement   = tgtId || 'No Sub Element';
+      superElement = srcId ? [srcId] : 'No Super Element';
 
-  superElement = inIds.length ? inIds : 'No Super Element';
-}
+    } else {
+      // ---- Bloque genérico con todos los fallbacks + inferencia geométrica ----
+      const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
+      const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
 
+      let outIds = rawOutgoing
+        .map(f => safeId(f?.targetRef || f?.target || f?.businessObject?.targetRef))
+        .filter(Boolean);
+
+      let inIds = rawIncoming
+        .map(f => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
+        .filter(Boolean);
+
+      // Escaneo por flows si sigue vacío
+      if (!outIds.length || !inIds.length) {
+        const thisId = safeId(e) || safeId(bo);
+        const allFlows = allElems.filter(x => {
+          const tp = x?.type || x?.businessObject?.$type || '';
+          return tp === 'bpmn:SequenceFlow' || tp === 'bpmn:MessageFlow';
+        });
+
+        if (!outIds.length) {
+          outIds = allFlows
+            .filter(f => safeId(f?.businessObject?.sourceRef || f?.source) === thisId)
+            .map(f => safeId(f?.businessObject?.targetRef || f?.target))
+            .filter(Boolean);
+        }
+
+        if (!inIds.length) {
+          inIds = allFlows
+            .filter(f => safeId(f?.businessObject?.targetRef || f?.target) === thisId)
+            .map(f => safeId(f?.businessObject?.sourceRef || f?.source))
+            .filter(Boolean);
+        }
+      }
+
+      // Último recurso: waypoint → bbox (para aristas “huérfanas” hacia custom nodes)
+      if (!outIds.length && Array.isArray(e.outgoing) && e.outgoing.length) {
+        const inferredOut = [];
+        e.outgoing.forEach(flow => {
+          if (!flow || !Array.isArray(flow.waypoints) || !flow.waypoints.length) return;
+          const last = flow.waypoints[flow.waypoints.length - 1];
+          const hit = allElems.find(el => {
+            if (!isFlowNodeCandidate(el)) return false;
+            const b = getBounds(el);
+            return pointIn(last, b);
+          });
+          const hid = safeId(hit);
+          if (hid) inferredOut.push(hid);
+        });
+        if (inferredOut.length) outIds = inferredOut;
+      }
+
+      subTasks   = outIds;
+      subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
+      superElement = inIds.length ? inIds : 'No Super Element';
+    }
 
     // Otros campos
     const isServiceTask = t0 === 'bpmn:ServiceTask';
@@ -241,10 +340,8 @@ function getAllRelevantTasks(bpmnModeler) {
       String(t0).toLowerCase() === 'custom:scheduler' ||
       String(bo.$type || '').toLowerCase() === 'custom:scheduler';
 
-    // Helper para leer propiedades tolerando variantes y namespaces custom:
     const getBO = (k) => bo?.[k] ?? bo?.get?.(k) ?? bo?.get?.(`custom:${k}`) ?? '';
 
-    // url → api, sin contentFile
     const rawApi = isCustomScheduler ? (getBO('url')) : '';
     const api = isValidUrl(rawApi) ? rawApi : '';
     const fileName = isCustomScheduler ? (getBO('fileName') ?? getBO('filename')) : '';
