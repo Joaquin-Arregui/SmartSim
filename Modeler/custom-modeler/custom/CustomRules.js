@@ -5,8 +5,13 @@ import RuleProvider from 'diagram-js/lib/features/rules/RuleProvider';
 
 const HIGH_PRIORITY = 1500;
 
-function isCustom(el) { return el && /^custom:/.test((el.type||'')); }
-function isScheduler(el) { return el && /^custom:scheduler$/i.test(el.type||''); }
+function isCustom(el) {
+  return el && /^custom:/.test((el.type || ''));
+}
+
+function isScheduler(el) {
+  return el && /^custom:scheduler$/i.test(el.type || '');
+}
 
 export default function CustomRules(eventBus) {
   RuleProvider.call(this, eventBus);
@@ -17,41 +22,62 @@ inherits(CustomRules, RuleProvider);
 CustomRules.$inject = ['eventBus'];
 
 CustomRules.prototype.init = function() {
+
   /**
    * Can shape be created on target container?
    */
   function canCreate(shape, target) {
     if (!isCustom(shape)) return;
-    return is(target, 'bpmn:Process') || is(target, 'bpmn:Participant') || is(target, 'bpmn:Collaboration');
+    return (
+      is(target, 'bpmn:Process') ||
+      is(target, 'bpmn:Participant') ||
+      is(target, 'bpmn:Collaboration') ||
+      is(target, 'bpmn:Lane') ||
+      is(target, 'bpmn:SubProcess')
+    );
   }
 
   /**
    * Can source and target be connected?
    */
   function canConnect(source, target) {
-  if (
-    (isScheduler(source) && is(target, 'bpmn:FlowNode')) ||
-    (isScheduler(target) && is(source, 'bpmn:FlowNode')) ||
-    (isScheduler(source) && isScheduler(target))
-  ) {
-    return { type: 'bpmn:SequenceFlow' };
-  }
-  return false;
-}
+    const involvesScheduler = isScheduler(source) || isScheduler(target);
 
+    if (!involvesScheduler) {
+      // ⬅️ sin scheduler, dejamos que actúen las reglas nativas (SequenceFlow, MessageFlow, etc.)
+      return;
+    }
+
+    const isFlowNode = el => is(el, 'bpmn:FlowNode');
+
+    if (
+      (isScheduler(source) && isFlowNode(target)) ||
+      (isScheduler(target) && isFlowNode(source)) ||
+      (isScheduler(source) && isScheduler(target))
+    ) {
+      return { type: 'bpmn:SequenceFlow' };
+    }
+
+    // Si quisieras permitir Scheduler ↔ otro participante con MessageFlow:
+    // return { type: 'bpmn:MessageFlow' };
+
+    return false;
+  }
 
   // Allow moving custom elements if destination is valid
   this.addRule('elements.move', HIGH_PRIORITY, function(context) {
-    const target = context.target;
-    const shapes = context.shapes;
-
+    const { target, shapes } = context;
     let type;
 
-    const allowed = reduce(shapes, function(result, s) {
-      if (type === undefined) type = isCustom(s);
-      if (type !== isCustom(s) || result === false) return false;
-      return canCreate(s, target);
-    }, undefined);
+    const allowed = reduce(
+      shapes,
+      function(result, s) {
+        if (type === undefined) type = isCustom(s);
+        if (type !== isCustom(s) || result === false) return false;
+        return canCreate(s, target);
+      },
+      undefined
+    );
 
     return allowed;
   });
@@ -62,9 +88,10 @@ CustomRules.prototype.init = function() {
 
   // ✅ permitir redimensionar solo el scheduler
   this.addRule('shape.resize', HIGH_PRIORITY, function(context) {
-    const shape = context.shape;
+    const { shape } = context;
     if (isScheduler(shape)) return true;
     if (isCustom(shape)) return false;
+    return;
   });
 
   // ✅ conexión desde/hacia scheduler
