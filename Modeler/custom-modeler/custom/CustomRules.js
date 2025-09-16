@@ -5,13 +5,8 @@ import RuleProvider from 'diagram-js/lib/features/rules/RuleProvider';
 
 const HIGH_PRIORITY = 1500;
 
-function isCustom(element) {
-  return element && /^custom:/.test(element.type);
-}
-
-function isScheduler(element) {
-  return element && element.type === 'custom:scheduler';
-}
+function isCustom(el) { return el && /^custom:/.test((el.type||'')); }
+function isScheduler(el) { return el && /^custom:scheduler$/i.test(el.type||''); }
 
 export default function CustomRules(eventBus) {
   RuleProvider.call(this, eventBus);
@@ -34,8 +29,6 @@ CustomRules.prototype.init = function() {
    * Can source and target be connected?
    */
   function canConnect(source, target) {
-  const isScheduler = el => el && el.type === 'custom:scheduler';
-
   if (
     (isScheduler(source) && is(target, 'bpmn:FlowNode')) ||
     (isScheduler(target) && is(source, 'bpmn:FlowNode')) ||
@@ -43,7 +36,6 @@ CustomRules.prototype.init = function() {
   ) {
     return { type: 'bpmn:SequenceFlow' };
   }
-
   return false;
 }
 

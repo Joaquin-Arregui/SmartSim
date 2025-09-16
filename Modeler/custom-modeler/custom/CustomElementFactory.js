@@ -26,90 +26,47 @@ export default function CustomElementFactory(bpmnFactory, moddle) {
    *
    * @return {djs.model.Base}
    */
-  this.create = function(elementType, attrs) {
-    var type = attrs.type;
+  // CustomElementFactory.create
+this.create = function(elementType, attrs) {
+  let type = attrs.type;
 
-    if (elementType === 'label') {
-      return self._baseCreate(elementType, assign({ type: 'label' }, DEFAULT_LABEL_SIZE, attrs));
+  if (elementType === 'label') {
+    return self._baseCreate(elementType, assign({ type: 'label' }, DEFAULT_LABEL_SIZE, attrs));
+  }
+
+  // 👇 normaliza tipos custom a minúsculas
+  if (/^custom:/i.test(type)) {
+    type = type.toLowerCase();
+    attrs.type = type;
+
+    if (!attrs.businessObject) {
+      attrs.businessObject = { type, documentation: [] };
+
+      if (type === 'custom:scheduler') {
+        attrs.businessObject.name = '';
+        attrs.businessObject.documentation = [];
+        attrs.businessObject.customAttributes = [];
+        attrs.businessObject.extensionElements = moddle.create('bpmn:ExtensionElements', { values: [] });
+      }
+
+      if (attrs.id) assign(attrs.businessObject, { id: attrs.id });
     }
 
-    // add type to businessObject if custom
-    if (/^custom:/.test(type)) {
-      if (!attrs.businessObject) {
-        
-        attrs.businessObject = {
-          type: type,
-          documentation: []
-        };
+    if (!/:connection$/.test(type)) assign(attrs, self._getCustomElementSize(type));
 
-        if (type === 'custom:scheduler') {
-          attrs.businessObject.name = '';
+    if (!('$model' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, '$model', { value: moddle });
+    if (!('$instanceOf' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, '$instanceOf', {
+      value: function(t) { return this.type === t; }
+    });
+    if (!('get' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, 'get', { value: function(k){ return this[k]; } });
+    if (!('set' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, 'set', { value: function(k,v){ return (this[k]=v); } });
 
-          // 🔒 Seguridad absoluta contra errores en el panel
-          attrs.businessObject.documentation = [];
-          attrs.businessObject.customAttributes = [];
-          attrs.businessObject.extensionElements = moddle.create('bpmn:ExtensionElements', {
-            values: []
-          });
-        }
+    return self._baseCreate(elementType, attrs);
+  }
 
+  return this.createElement(elementType, attrs);
+};
 
-        if (attrs.id) {
-          assign(attrs.businessObject, {
-            id: attrs.id
-          });
-        }
-      }
-
-
-      // add width and height if shape
-      if (!/:connection$/.test(type)) {
-        assign(attrs, self._getCustomElementSize(type));
-      }
-
-
-      // we mimic the ModdleElement API to allow interoperability with
-      // other components, i.e. the Modeler and Properties Panel
-
-      if (!('$model' in attrs.businessObject)) {
-        Object.defineProperty(attrs.businessObject, '$model', {
-          value: moddle
-        });
-      }
-
-      if (!('$instanceOf' in attrs.businessObject)) {
-
-        // ensures we can use ModelUtil#is for type checks
-        Object.defineProperty(attrs.businessObject, '$instanceOf', {
-          value: function(type) {
-            return this.type === type;
-          }
-        });
-      }
-
-      if (!('get' in attrs.businessObject)) {
-        Object.defineProperty(attrs.businessObject, 'get', {
-          value: function(key) {
-            return this[key];
-          }
-        });
-      }
-
-      if (!('set' in attrs.businessObject)) {
-        Object.defineProperty(attrs.businessObject, 'set', {
-          value: function(key, value) {
-            return this[key] = value;
-          }
-        });
-      }
-
-      // END minic ModdleElement API
-
-      return self._baseCreate(elementType, attrs);
-    }
-
-    return this.createElement(elementType, attrs);
-  };
 }
 
 inherits(CustomElementFactory, BpmnElementFactory);

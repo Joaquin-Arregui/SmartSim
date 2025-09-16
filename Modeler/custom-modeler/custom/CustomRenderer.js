@@ -81,22 +81,13 @@ CustomRenderer.prototype.canRender = function(element) {
 };
 
 CustomRenderer.prototype.drawShape = function(p, element) {
-  const type = element.type;
-
-  if (type === 'custom:scheduler') {
-  return this.drawScheduler(p, element);
-  }
-
+  const type = (element.type || '').toLowerCase();
+  if (type === 'custom:scheduler') return this.drawScheduler(p, element);
   return null;
 };
-
 CustomRenderer.prototype.getShapePath = function(shape) {
-  const type = shape.type;
-
-  if (type === 'custom:scheduler') {
-    return this.getSchedulerPath(shape);
-  }
-
+  const type = (shape.type || '').toLowerCase();
+  if (type === 'custom:scheduler') return this.getSchedulerPath(shape);
   return null;
 };
 

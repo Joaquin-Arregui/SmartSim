@@ -344,7 +344,6 @@ function getAllRelevantTasks(bpmnModeler) {
 
     const rawApi = isCustomScheduler ? (getBO('url')) : '';
     const api = isValidUrl(rawApi) ? rawApi : '';
-    const fileName = isCustomScheduler ? (getBO('fileName') ?? getBO('filename')) : '';
 
     return {
       id_model: id_model,
@@ -384,7 +383,6 @@ function getAllRelevantTasks(bpmnModeler) {
       AdditionalIntegerParameter,
       containedElements,
       Api: api,
-      FileName: fileName
     };
   });
 }
@@ -459,8 +457,7 @@ function exportToEsper(bpmnModeler) {
             : ['"No SubTasks"'];
 
           content += `api="${safe(element.Api) || ''}", `;
-          content += `subTask=${ids.join(', ')}, `;
-          content += `fileName="${safe(element.FileName) || ''}"]\n`;
+          content += `subTask=${ids.join(', ')}]\n`;
 
 
         } else if (element.type === 'bpmn:Collaboration') {
