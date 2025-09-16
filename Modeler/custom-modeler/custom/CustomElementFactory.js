@@ -26,48 +26,104 @@ export default function CustomElementFactory(bpmnFactory, moddle) {
    *
    * @return {djs.model.Base}
    */
-  // CustomElementFactory.create
-this.create = function(elementType, attrs) {
-  let type = attrs.type;
+  this.create = function(elementType, attrs) {
+    var type = attrs.type;
 
-  if (elementType === 'label') {
-    return self._baseCreate(elementType, assign({ type: 'label' }, DEFAULT_LABEL_SIZE, attrs));
-  }
+    if (elementType === 'label') {
+      return self._baseCreate(elementType, assign({ type: 'label' }, DEFAULT_LABEL_SIZE, attrs));
+    }
 
-  // 👇 normaliza tipos custom a minúsculas
-  if (/^custom:/i.test(type)) {
-    type = type.toLowerCase();
-    attrs.type = type;
+    // add type to businessObject if custom
+    if (/^custom:/.test(type)) {
+      if (!attrs.businessObject) {
+        
+        attrs.businessObject = {
+          type: type,
+          documentation: []
+        };
 
-    if (!attrs.businessObject) {
-      attrs.businessObject = { type, documentation: [] };
+        if (type === 'custom:scheduler') {
+        // id del shape
+        if (!attrs.id) {
+          attrs.id = generateId('Scheduler');     // -> p.ej. Scheduler_ab12cd34
+        }
 
-      if (type === 'custom:scheduler') {
+        // id también en el BO para que tu export lo lea cómodo
+        if (!attrs.businessObject.id) {
+          attrs.businessObject.id = attrs.id;
+        }
+
+        // resto de saneo que ya tienes
         attrs.businessObject.name = '';
         attrs.businessObject.documentation = [];
         attrs.businessObject.customAttributes = [];
         attrs.businessObject.extensionElements = moddle.create('bpmn:ExtensionElements', { values: [] });
       }
 
-      if (attrs.id) assign(attrs.businessObject, { id: attrs.id });
+        if (attrs.id) {
+          assign(attrs.businessObject, {
+            id: attrs.id
+          });
+        }
+      }
+
+
+      // add width and height if shape
+      if (!/:connection$/.test(type)) {
+        assign(attrs, self._getCustomElementSize(type));
+      }
+
+
+      // we mimic the ModdleElement API to allow interoperability with
+      // other components, i.e. the Modeler and Properties Panel
+
+      if (!('$model' in attrs.businessObject)) {
+        Object.defineProperty(attrs.businessObject, '$model', {
+          value: moddle
+        });
+      }
+
+      if (!('$instanceOf' in attrs.businessObject)) {
+
+        // ensures we can use ModelUtil#is for type checks
+        Object.defineProperty(attrs.businessObject, '$instanceOf', {
+          value: function(type) {
+            return this.type === type;
+          }
+        });
+      }
+
+      if (!('get' in attrs.businessObject)) {
+        Object.defineProperty(attrs.businessObject, 'get', {
+          value: function(key) {
+            return this[key];
+          }
+        });
+      }
+
+      if (!('set' in attrs.businessObject)) {
+        Object.defineProperty(attrs.businessObject, 'set', {
+          value: function(key, value) {
+            return this[key] = value;
+          }
+        });
+      }
+
+      // END minic ModdleElement API
+
+      return self._baseCreate(elementType, attrs);
     }
 
-    if (!/:connection$/.test(type)) assign(attrs, self._getCustomElementSize(type));
-
-    if (!('$model' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, '$model', { value: moddle });
-    if (!('$instanceOf' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, '$instanceOf', {
-      value: function(t) { return this.type === t; }
-    });
-    if (!('get' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, 'get', { value: function(k){ return this[k]; } });
-    if (!('set' in attrs.businessObject)) Object.defineProperty(attrs.businessObject, 'set', { value: function(k,v){ return (this[k]=v); } });
-
-    return self._baseCreate(elementType, attrs);
-  }
-
-  return this.createElement(elementType, attrs);
-};
-
+    return this.createElement(elementType, attrs);
+  };
 }
+
+function generateId(prefix) {
+  // 8 chars alfanuméricos
+  const random = Math.random().toString(36).substring(2, 10);
+  return `${prefix}_${random}`;
+}
+
 
 inherits(CustomElementFactory, BpmnElementFactory);
 
