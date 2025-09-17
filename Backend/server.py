@@ -16,31 +16,28 @@ def startSimulation():
     data = request.get_json(force=True)
 
     rules = data.get("content", "").strip()
+    csv = data.get("csv", "").strip()
     diagram = data.get("diagramXML", "").strip()
-    filename = data.get("filename", "esperTasks.txt")
-    diagramfilename = data.get("diagramfilename", "diagram.bpmn")
 
     scriptDir = os.path.dirname(__file__)
-    outDir = os.path.join(os.path.dirname(scriptDir), 'Backend', 'simulator', 'files')
-    os.makedirs(outDir, exist_ok=True)  # <--
-
-   
-    csv_content = data.get("csv")                                                  
-    csv_filename = data.get("csvfilename")                                         
-    if csv_content and csv_filename:                                               
-        with open(os.path.join(outDir, csv_filename), "w", encoding="utf-8") as f: 
-            f.write(csv_content)                                                   
-
     resultsPath = os.path.join(os.path.dirname(scriptDir), 'Backend', 'heatMap', 'files', 'resultSimulation.xes')
 
-    processSimulation(rules)
+    processSimulation(rules, csv)
 
-    with open(resultsPath, "r", encoding="utf-8") as f:
+    with open(resultsPath, "r") as f:
         simulation = f.read()
 
-    systemPrompt = """You are an assistant expert in BPMN modeling and simulation. ..."""
+    systemPrompt = """\
+You are an assistant expert in BPMN modeling and simulation. The following logs and BPMN data describe a process with multiple lanes and user roles. Use them as context to answer questions or provide suggestions.
+"""
 
-    contextInfo = f"Simulation Log:\n{simulation}\n\nDiagram BPMN:\n{diagram}\n"
+    contextInfo = f"""
+Simulation Log:
+{simulation}
+
+Diagram BPMN:
+{diagram}
+"""
 
     global MESSAGES
     MESSAGES = [
@@ -51,11 +48,7 @@ def startSimulation():
     heatMap = getHeatMap(diagram)
 
     os.remove(resultsPath)
-    return jsonify({
-        "simulation": simulation,
-        "heatMap": heatMap,
-        "reply": "Type your message below."
-    })
+    return jsonify({"simulation": simulation, "heatMap": heatMap, "reply":"Type your message below."})
 
 @app.route('/continueChat', methods=['POST'])
 def continueChat():
@@ -68,7 +61,6 @@ def continueChat():
 
     if not user_message:
         return jsonify({"reply": "No message received."}), 400
-
     MESSAGES.append({"role": "user", "content": user_message})
 
     answer = callAPI(MESSAGES, llm)

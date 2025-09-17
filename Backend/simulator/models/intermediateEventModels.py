@@ -22,3 +22,9 @@ class BPMNTimerIntermediateCatchEvent(BPMNElement):
         super().__init__(name, id_bpmn, bpmn_type)
         self.time = time
         self.subTask = subTask
+
+class BPMNScheduler(BPMNElement):
+    def __init__(self, name: str, id_bpmn: str, bpmn_type: str, api: str, subTask: BPMNElement):
+        super().__init__(name, id_bpmn, bpmn_type)
+        self.api = api
+        self.subTask = subTask
