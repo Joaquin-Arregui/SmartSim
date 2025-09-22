@@ -461,7 +461,7 @@ function exportToEsper(bpmnModeler) {
 
           content += `api="${safe(api)}", `;
           // si quieres que salga como lista, pon corchetes:
-          content += `subTask=[${ids.join(', ')}]\n`;
+          content += `subTask=${ids.join(', ')}]\n`;
 
         } else if (element.type === 'bpmn:Collaboration') {
           content += `instances=${element.Instances}]\n`;
