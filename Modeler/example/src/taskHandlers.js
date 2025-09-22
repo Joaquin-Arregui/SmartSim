@@ -5,6 +5,18 @@ function getAllRelevantTasks(bpmnModeler) {
   const canvas = bpmnModeler.get('canvas');
   const canvasRoot = canvas?.getRootElement?.();
   const definitions = canvasRoot?.businessObject?.$parent || {};
+
+  // detector reutilizable
+  const isScheduler = (el) => {
+    if (!el) return false;
+    const bo = el.businessObject || {};
+    const a = bo.$attrs || {};
+    return el.isScheduler === true
+        || a['custom:type'] === 'scheduler'
+        || a['isScheduler'] === 'true'
+        || String(bo.$type || '').toLowerCase() === 'custom:scheduler';
+  };
+
   const id_model = Array.isArray(definitions.diagrams) && definitions.diagrams[0]?.id
     ? definitions.diagrams[0].id
     : 'UnknownModel';
@@ -13,11 +25,11 @@ function getAllRelevantTasks(bpmnModeler) {
     ? elementRegistry.getAll()
     : [];
 
-  // ===== Helpers (declarados una sola vez) =====
+  // ===== Helpers =====
   const arr = (x) => Array.isArray(x) ? x : (x == null ? [] : [x]);
   const safeId = (x) => x?.id || x?.businessObject?.id || undefined;
   const ids = (xs) => arr(xs).filter(Boolean).map((y) => safeId(y)).filter(Boolean);
-  const safeBO = (e) => e?.businessObject || null;
+  const safeBO = (el) => el?.businessObject || null;
 
   const getBounds = (el) => {
     if (!el) return null;
@@ -48,9 +60,8 @@ function getAllRelevantTasks(bpmnModeler) {
     if (!el) return false;
     if (isFlow(el) || isLabel(el)) return false;
     const tp = el?.businessObject?.$type || el?.type || '';
-    // descarta contenedores
     if (tp === 'bpmn:Participant' || tp === 'bpmn:Lane' || tp === 'bpmn:Collaboration' || tp === 'bpmn:Process') return false;
-    return true; // tasks, events, gateways, custom (Scheduler)
+    return true;
   };
 
   const isValidUrl = (v) => {
@@ -65,8 +76,8 @@ function getAllRelevantTasks(bpmnModeler) {
 
   // Defaults por Process
   const defaultsByProcessId = new Map();
-  for (const e of allElems) {
-    const bo = safeBO(e);
+  for (const el of allElems) {
+    const bo = safeBO(el);
     if (bo?.$type === 'bpmn:Process') {
       const current = {};
       for (const { key, value } of keyValuePairs) {
@@ -80,8 +91,8 @@ function getAllRelevantTasks(bpmnModeler) {
   }
 
   // Elementos relevantes
-  const relevantElements = allElems.filter((e) => {
-    const t = e?.type || '';
+  const relevantElements = allElems.filter((el) => {
+    const t = el?.type || '';
     if (!t) return false;
     return (
       t === 'bpmn:Task' ||
@@ -102,8 +113,7 @@ function getAllRelevantTasks(bpmnModeler) {
       t === 'bpmn:DataInputAssociation' ||
       t === 'bpmn:DataOutputAssociation' ||
       t.startsWith('bpmn:') ||
-      t === 'custom:Scheduler' ||
-      t.startsWith('custom:')
+      t.startsWith('custom:') // por si en algún momento el renderer usa custom:scheduler
     );
   });
 
@@ -122,11 +132,10 @@ function getAllRelevantTasks(bpmnModeler) {
     else if (t0 === 'bpmn:IntermediateCatchEvent' && hasDef('bpmn:TimerEventDefinition')) type = 'bpmn:TimerIntermediateCatchEvent';
     else if (t0 === 'bpmn:IntermediateThrowEvent' && hasDef('bpmn:MessageEventDefinition')) type = 'bpmn:MessageIntermediateThrowEvent';
 
-    // Normalización explícita: custom:scheduler -> Scheduler
-    const isCustomSchedulerRaw =
-      String(t0).toLowerCase() === 'custom:scheduler' ||
-      String(bo.$type || '').toLowerCase() === 'custom:scheduler';
-    if (isCustomSchedulerRaw) type = 'Scheduler';
+    // Normalización Scheduler (attrs/flag/custom type)
+    if (isScheduler(e)) {
+      type = 'Scheduler';
+    }
 
     // Relaciones super/sub + SubTasks
     let subTasks = [];
@@ -158,14 +167,12 @@ function getAllRelevantTasks(bpmnModeler) {
       superElement = inIds.length ? inIds : 'No Super Element';
 
     } else if (t0 === 'bpmn:SequenceFlow' || t0 === 'bpmn:MessageFlow') {
-      // Fallbacks habituales
       let src = bo.sourceRef || e.source || e.businessObject?.sourceRef;
       let tgt = bo.targetRef || e.target || e.businessObject?.targetRef;
 
       let srcId = safeId(src);
       let tgtId = safeId(tgt);
 
-      // Waypoints → bbox si falta target/src (útil para custom:Scheduler)
       if ((!tgtId || tgtId === 'undefined') && Array.isArray(e.waypoints) && e.waypoints.length) {
         const last = e.waypoints[e.waypoints.length - 1];
         const hitTgt = allElems.find(el => {
@@ -190,7 +197,6 @@ function getAllRelevantTasks(bpmnModeler) {
       superElement = srcId ? [srcId] : 'No Super Element';
 
     } else {
-      // ---- Bloque genérico con todos los fallbacks + inferencia geométrica ----
       const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
       const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
 
@@ -202,7 +208,6 @@ function getAllRelevantTasks(bpmnModeler) {
         .map(f => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
         .filter(Boolean);
 
-      // Escaneo por flows si sigue vacío
       if (!outIds.length || !inIds.length) {
         const thisId = safeId(e) || safeId(bo);
         const allFlows = allElems.filter(x => {
@@ -225,7 +230,6 @@ function getAllRelevantTasks(bpmnModeler) {
         }
       }
 
-      // Último recurso: waypoint → bbox (para aristas “huérfanas” hacia custom nodes)
       if (!outIds.length && Array.isArray(e.outgoing) && e.outgoing.length) {
         const inferredOut = [];
         e.outgoing.forEach(flow => {
@@ -249,13 +253,13 @@ function getAllRelevantTasks(bpmnModeler) {
 
     // Otros campos
     const isServiceTask = t0 === 'bpmn:ServiceTask';
-    const isUserTask   = t0 === 'bpmn:UserTask';
-    const isTask       = t0 === 'bpmn:Task' || isUserTask;
-    const isProcess    = t0 === 'bpmn:Process';
-    const isCollab     = t0 === 'bpmn:Collaboration';
-    const isParticipant= t0 === 'bpmn:Participant';
-    const isLane       = t0 === 'bpmn:Lane';
-    const isSeqOrMsg   = t0 === 'bpmn:SequenceFlow' || t0 === 'bpmn:MessageFlow';
+    const isUserTask    = t0 === 'bpmn:UserTask';
+    const isTask        = t0 === 'bpmn:Task' || isUserTask;
+    const isProcess     = t0 === 'bpmn:Process';
+    const isCollab      = t0 === 'bpmn:Collaboration';
+    const isParticipant = t0 === 'bpmn:Participant';
+    const isLane        = t0 === 'bpmn:Lane';
+    const isSeqOrMsg    = t0 === 'bpmn:SequenceFlow' || t0 === 'bpmn:MessageFlow';
 
     const percentageOfBranches = isSeqOrMsg ? (bo.percentageOfBranches ?? 0) : 0;
 
@@ -335,13 +339,9 @@ function getAllRelevantTasks(bpmnModeler) {
     }
 
     // --- Scheduler (normalizado) ---
-    const isCustomScheduler =
-      type === 'Scheduler' ||
-      String(t0).toLowerCase() === 'custom:scheduler' ||
-      String(bo.$type || '').toLowerCase() === 'custom:scheduler';
+    const isCustomScheduler = (type === 'Scheduler');
 
     const getBO = (k) => bo?.[k] ?? bo?.get?.(k) ?? bo?.get?.(`custom:${k}`) ?? '';
-
     const rawApi = isCustomScheduler ? (getBO('url')) : '';
     const api = isValidUrl(rawApi) ? rawApi : '';
 
@@ -349,7 +349,7 @@ function getAllRelevantTasks(bpmnModeler) {
       id_model: id_model,
       id_bpmn: bo.id || e.id || 'Unknown',
       name: bo.name || e.name || '',
-      type, // 'Scheduler' si era custom:scheduler
+      type,
 
       Mth: isServiceTask ? (bo.Mth || 0) : 0,
       P: isServiceTask ? (bo.P || 0) : 0,
@@ -451,14 +451,17 @@ function exportToEsper(bpmnModeler) {
           const subTasks = element.SubTasks ? element.SubTasks.join(', ') : 'No SubTasks';
           content += `subTask="${safe(subTasks)}"]\n`;
 
-        } else if (element.type === 'Scheduler') {
-          const ids = (Array.isArray(element.SubTasks) && element.SubTasks.length)
+        } else if (isSchedulerElement(element)) {
+          const ids = Array.isArray(element.SubTasks) && element.SubTasks.length
             ? element.SubTasks.map(id => `"${safe(id)}"`)
             : ['"No SubTasks"'];
 
-          content += `api="${safe(element.Api) || ''}", `;
-          content += `subTask=${ids.join(', ')}]\n`;
+          // usa el campo normalizado que llenamos en getAllRelevantTasks
+          const api = element.Api || '';
 
+          content += `api="${safe(api)}", `;
+          // si quieres que salga como lista, pon corchetes:
+          content += `subTask=[${ids.join(', ')}]\n`;
 
         } else if (element.type === 'bpmn:Collaboration') {
           content += `instances=${element.Instances}]\n`;
@@ -547,6 +550,20 @@ async function exportCsvFromModel(bpmnModeler) {
   }
 
   return { csvContent, fileName };
+}
+
+function isSchedulerElement(el) {
+  if (!el) return false;
+  // si viene del getAllRelevantTasks, puede traerte type='Scheduler'
+  if (el.type === 'Scheduler') return true;
+
+  // por si llamas exportToEsper con otra lista o en el futuro
+  const bo = el.businessObject || {};
+  const a = bo.$attrs || {};
+  return el.isScheduler === true
+      || a['custom:type'] === 'scheduler'
+      || a['isScheduler'] === 'true'
+      || String(bo.$type || '').toLowerCase() === 'custom:scheduler';
 }
 
 

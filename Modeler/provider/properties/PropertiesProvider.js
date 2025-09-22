@@ -11,12 +11,30 @@ import { is } from 'bpmn-js/lib/util/ModelUtil';
 
 const LOW_PRIORITY = 500;
 
+function isScheduler(el) {
+  if (!el) return false;
+  const bo = el.businessObject;
+  const a = (bo && bo.$attrs) || {};
+  // También acepta el flag del shape que pusimos en creación
+  return el.isScheduler === true
+      || a['custom:type'] === 'scheduler'
+      || a['isScheduler'] === 'true';
+}
+
+
 export default function PropertiesProvider(propertiesPanel, translate) {
 
+  
   // API ////////
 
   this.getGroups = function(element) {
     return function(groups) {
+
+    if (isScheduler(element)) {
+      groups.push(createSchedulerGroup(element, translate));
+      return groups;
+    }
+
       if (is(element, 'bpmn:ManualTask') || is(element, 'bpmn:UserTask') || (is(element, 'bpmn:Task') 
         || is(element, 'bpmn:BusinessRuleTask') || is(element, 'bpmn:ScriptTask') || is(element, 'bpmn:CallActivity') 
         || is(element, 'bpmn:SendTask') || is(element, 'bpmn:ReceiveTask')
@@ -47,8 +65,6 @@ export default function PropertiesProvider(propertiesPanel, translate) {
         } else {
             groups.push(createParticipantGroup(element, translate));
         }
-    } else if (is(element, 'custom:scheduler')) {
-        groups.push(createSchedulerGroup(element, translate));
       }    
       return groups;
     };

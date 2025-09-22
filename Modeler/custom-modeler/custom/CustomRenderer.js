@@ -76,20 +76,31 @@ inherits(CustomRenderer, BaseRenderer);
 
 CustomRenderer.$inject = ['eventBus', 'styles'];
 
+function isScheduler(el) {
+  if (!el) return false;
+  const bo = el.businessObject;
+  const a = (bo && bo.$attrs) || {};
+  return el.isScheduler === true
+      || a['custom:type'] === 'scheduler'
+      || a['isScheduler'] === 'true';
+}
+
+
 CustomRenderer.prototype.canRender = function(element) {
-  return /^custom:/.test(element.type);
+  // Renderizamos nuestros "scheduler" aunque sean bpmn:Task
+  return isScheduler(element);
 };
 
 CustomRenderer.prototype.drawShape = function(p, element) {
-  const type = (element.type || '').toLowerCase();
-  if (type === 'custom:scheduler') return this.drawScheduler(p, element);
+  if (isScheduler(element)) return this.drawScheduler(p, element);
   return null;
 };
+
 CustomRenderer.prototype.getShapePath = function(shape) {
-  const type = (shape.type || '').toLowerCase();
-  if (type === 'custom:scheduler') return this.getSchedulerPath(shape);
+  if (isScheduler(shape)) return this.getSchedulerPath(shape);
   return null;
 };
+
 
 CustomRenderer.prototype.drawConnection = function(p, element) {
   if (element.type === 'custom:connection') {
