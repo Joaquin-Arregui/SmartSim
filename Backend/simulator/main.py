@@ -42,7 +42,7 @@ def sendToCSV(csv_value, url, timeReady):
 def processSimulation(rules, csv):
     elements, process, starts, messageStarts = parse_bpmn_elements(rules)
     for key in elements:
-        if key.startswith("Scheduler"):
+        if elements[key].__class__.__name__ == "BPMNScheduler":
             scheduler = elements[key]
             scheduled = True
     if scheduled:
