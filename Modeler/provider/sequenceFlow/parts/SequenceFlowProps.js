@@ -3,7 +3,6 @@ import { useService } from 'bpmn-js-properties-panel';
 import { TextFieldEntry } from '@bpmn-io/properties-panel';
 import { is } from 'bpmn-js/lib/util/ModelUtil';
 
-
 export default function(element) {
   return [
     {
@@ -28,94 +27,150 @@ function PercentageofBranchesFunction(props) {
       return '';
     }
     const value = element.businessObject.percentageOfBranches;
-
-    // Si el valor es `NaN` o no es un número válido, retornar cadena vacía para permitir edición
-    return (typeof value !== 'undefined' && !isNaN(value)) ? value.toString() : '';
+    return (value !== undefined && value !== null && !isNaN(value)) ? value.toString() : '';
   };
 
   const setValue = value => {
-    if (typeof value === 'undefined') {
-      return;
-    }
+    const safeValue = value || ''; 
+
     if (!element || !element.businessObject) {
       return;
     }
 
-    if (value.trim() === '') {
-      modeling.updateProperties(element, {
-        percentageOfBranches: ''
-      });
-      return;
-    }
-    const newPercentage = parseInt(value, 10);
+    let valueToSave;
+    const newPercentage = parseInt(safeValue, 10);
 
-    if (isNaN(newPercentage)) {
-      return;
+    if (safeValue.trim() === '') {
+      valueToSave = undefined; 
+    } else if (isNaN(newPercentage)) {
+      return; 
+    } else {
+      valueToSave = newPercentage;
     }
+
+    modeling.updateProperties(element, {
+      percentageOfBranches: valueToSave
+    });
+  };
+
+  const validate = (value) => {
+    const safeValue = value || '';
+    const newPercentage = parseInt(safeValue, 10);
+
+    if (safeValue.trim() !== '' && isNaN(newPercentage)) {
+      return translate('Must be a valid number.');
+    }
+    
+    if (newPercentage < 0) {
+      return translate('Percentage cannot be negative.');
+    }
+
     const sourceElement = element.businessObject.sourceRef;
 
     if (sourceElement && is(sourceElement, 'bpmn:Gateway')) {
       const outgoingFlows = sourceElement.outgoing || [];
       let totalPercentage = 0;
-      let filledBranchesCount = 0;
-      let sequenceFlowCount = 0;
+      let allBranchesHaveValue = true; 
 
       outgoingFlows.forEach(flow => {
         if (is(flow, 'bpmn:SequenceFlow')) {
-          sequenceFlowCount++;
-          const branchPercentage = parseInt(flow.percentageOfBranches || 0, 10);
-          totalPercentage += branchPercentage;
-
-          // Cuenta ramas con un porcentaje válido y diferente de cero
-          if (branchPercentage > 0 && !isNaN(branchPercentage)) {
-            filledBranchesCount++;
+          
+          let branchPercentage;
+          if (flow.id === element.businessObject.id) {
+            branchPercentage = newPercentage;
+          } else {
+            branchPercentage = parseInt(flow.percentageOfBranches, 10);
           }
+
+          if (isNaN(branchPercentage)) {
+            allBranchesHaveValue = false;
+            branchPercentage = 0;
+          }
+          
+          totalPercentage += branchPercentage;
         }
       });
 
-      // Añadir la rama actual al total de porcentajes y ramas completadas
-      totalPercentage += newPercentage;
-      if (newPercentage > 0) {
-        filledBranchesCount++;
-      }
+      if (allBranchesHaveValue) {
+        if (totalPercentage > 100) {
+          return translate('Total percentage exceeds 100%.'); 
+        }
 
-      // Verifica si el total excede el 100%
-      if (totalPercentage > 100) {
-        alert('La suma de todas las ramas del Gateway excede el 100%. Ajusta los valores.');
-        return;
-      }
-
-      // Verifica si se han rellenado todas las ramas y el total no es 100
-      if (filledBranchesCount === sequenceFlowCount && totalPercentage !== 100) {
-        alert('Todas las ramas están completadas pero el valor total no es 100%. Ajusta los valores.');
-        return;
+        if (totalPercentage !== 100) {
+          return translate('Total must be 100% when all branches are filled.');
+        }
       }
     }
 
-    modeling.updateProperties(element, {
-      percentageOfBranches: newPercentage
-    });
+    return null;
   };
+
+  const validateOnBlur = () => {
+    
+    const currentPercentage = parseInt(element.businessObject.percentageOfBranches, 10);
+
+    if (isNaN(currentPercentage)) {
+      return;
+    }
+
+    const sourceElement = element.businessObject.sourceRef;
+
+    if (sourceElement && is(sourceElement, 'bpmn:Gateway')) {
+      const outgoingFlows = sourceElement.outgoing || [];
+      let totalPercentage = 0;
+      let allBranchesHaveValue = true; 
+
+      outgoingFlows.forEach(flow => {
+        if (is(flow, 'bpmn:SequenceFlow')) {
+          
+          let branchPercentage = parseInt(flow.percentageOfBranches, 10);
+
+          if (isNaN(branchPercentage)) {
+            allBranchesHaveValue = false;
+            branchPercentage = 0;
+          }
+          
+          totalPercentage += branchPercentage;
+        }
+      });
+
+      if (allBranchesHaveValue) {
+        
+        if (totalPercentage > 100) {
+          setTimeout(() => {
+            alert('La suma de todas las ramas del Gateway excede el 100%. Ajusta los valores.');
+          }, 0);
+          return; 
+        }
+
+        if (totalPercentage !== 100) {
+           setTimeout(() => {
+            alert('Todas las ramas están completadas pero el valor total no es 100%. Ajusta los valores.');
+          }, 0);
+          return;
+        }
+      }
+    }
+  };
+
 
   return html`<${TextFieldEntry}
     id=${id}
     element=${element}
     label=${translate('Percentage of Branches')}
     getValue=${getValue}
-    setValue=${setValue}
+    setValue=${setValue}           
     debounce=${debounce}
+    validate=${validate}
+    onBlur=${validateOnBlur}     
     tooltip=${translate('Enter the percentage for this branch.')} 
   />`;
 }
 
+
 function isNumberEntryEdited(element) {
-
   if (!element || !element.businessObject) {
-    return '';
+    return false;
   }
-
-  const nuValue = element.businessObject.numberOfExecutions;
-
-  // Retornar el valor tal como está, permitiendo que sea 'NaN' o vacío
-  return nuValue;
+  return element.businessObject.percentageOfBranches !== undefined;
 }
