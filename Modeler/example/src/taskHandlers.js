@@ -265,7 +265,7 @@ function getAllRelevantTasks(bpmnModeler) {
 
     let time = null;
     const timerDef = evDefs.find((d) => d?.$type === 'bpmn:TimerEventDefinition');
-    if (timerDef?.timeDuration?.body) time = timerDef.timeDuration.body;
+    if (timerDef?.timeDuration?.body) time = (timerDef.timeDuration.body).trim();
 
     const userTasks = arr(bo.UserTask).filter((s) => typeof s === 'string' && s.trim());
     const numberOfExecutions = bo.NumberOfExecutions ?? 1;
@@ -403,6 +403,7 @@ function exportToEsper(bpmnModeler) {
         content += `id_bpmn="${safe(element.id_bpmn) || 'Unknown'}", `;
 
         if (element.time) {
+          console.log(element);
           content += `time=${element.time}, `;
         }
 
