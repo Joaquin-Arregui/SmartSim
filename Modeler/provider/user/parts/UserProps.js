@@ -264,43 +264,64 @@ function maximumTimeFunction(props) {
       return '';
     }
     const value = element.businessObject.maximumTime;
-    return (typeof value !== 'undefined' && !isNaN(value)) ? value.toString() : '';
+    return (value !== undefined && !isNaN(value)) ? value.toString() : '';
   };
 
   const setValue = value => {
-    if (typeof value === 'undefined') {
-      return;
-    }
-
+    const safeValue = value || '';
     if (!element || !element.businessObject) {
       return;
     }
 
-    if (value.trim() === '') {
-      modeling.updateProperties(element, {
-        maximumTime: ''
-      });
+    let valueToSave;
+    const newValue = parseFloat(safeValue);
+
+    if (safeValue.trim() === '') {
+      valueToSave = undefined; 
+    } else if (isNaN(newValue)) {
       return;
-    }
-
-    const newValue = parseFloat(value);
-
-    if (isNaN(newValue)) {
-      return;
-    }
-
-    // Obtener el valor actual de `minimumTime`
-    const minimumTime = parseFloat(element.businessObject.minimumTime);
-
-    // Verificar que `maximumTime` sea mayor que `minimumTime`
-    if (!isNaN(minimumTime) && newValue <= minimumTime) {
-      alert('Maximum time must be greater than Minimum time.');
-      return;
+    } else {
+      valueToSave = newValue;
     }
 
     modeling.updateProperties(element, {
-      maximumTime: newValue
+      maximumTime: valueToSave
     });
+  };
+
+  const validate = (value) => {
+    const safeValue = value || '';
+    if (safeValue.trim() === '') {
+      return null;
+    }
+    
+    const newValue = parseFloat(safeValue);
+    
+    if (isNaN(newValue)) {
+      return translate('Must be a valid number.');
+    }
+    if (newValue < 0) {
+        return translate('Time cannot be negative.');
+    }
+
+    const minimumTime = parseFloat(element.businessObject.minimumTime);
+    if (!isNaN(minimumTime) && newValue <= minimumTime) {
+      return translate('Must be greater than Minimum time.');
+    }
+    return null;
+  };
+
+  const onBlur = () => {
+    const minValue = parseFloat(element.businessObject.minimumTime);
+    const maxValue = parseFloat(element.businessObject.maximumTime);
+
+    if (!isNaN(minValue) && !isNaN(maxValue)) {
+      if (minValue >= maxValue) {
+        setTimeout(() => {
+          alert(translate('Maximum time must be greater than Minimum time.'));
+        }, 0);
+      }
+    }
   };
 
   return html`<${TextFieldEntry}
@@ -310,6 +331,8 @@ function maximumTimeFunction(props) {
     getValue=${getValue}
     setValue=${setValue}
     debounce=${debounce}
+    validate=${validate}
+    onBlur=${onBlur}
     tooltip=${translate('Enter the maximum time.')} 
   />`;
 }
@@ -325,43 +348,64 @@ function minimumTimeFunction(props) {
       return '';
     }
     const value = element.businessObject.minimumTime;
-    return (typeof value !== 'undefined' && !isNaN(value)) ? value.toString() : '';
+    return (value !== undefined && !isNaN(value)) ? value.toString() : '';
   };
 
   const setValue = value => {
-    if (typeof value === 'undefined') {
-      return;
-    }
-
+    const safeValue = value || '';
     if (!element || !element.businessObject) {
       return;
     }
 
-    if (value.trim() === '') {
-      modeling.updateProperties(element, {
-        minimumTime: ''
-      });
+    let valueToSave;
+    const newValue = parseFloat(safeValue);
+
+    if (safeValue.trim() === '') {
+      valueToSave = undefined;
+    } else if (isNaN(newValue)) {
       return;
-    }
-
-    const newValue = parseFloat(value);
-
-    if (isNaN(newValue)) {
-      return;
-    }
-
-    // Obtener el valor actual de `maximumTime`
-    const maximumTime = parseFloat(element.businessObject.maximumTime);
-
-    // Verificar que `minimumTime` sea menor que `maximumTime`
-    if (!isNaN(maximumTime) && newValue >= maximumTime) {
-      alert('Minimum time must be less than Maximum time.');
-      return;
+    } else {
+      valueToSave = newValue;
     }
 
     modeling.updateProperties(element, {
-      minimumTime: newValue
+      minimumTime: valueToSave
     });
+  };
+
+  const validate = (value) => {
+    const safeValue = value || '';
+    if (safeValue.trim() === '') {
+      return null;
+    }
+    
+    const newValue = parseFloat(safeValue);
+    
+    if (isNaN(newValue)) {
+      return translate('Must be a valid number.');
+    }
+    if (newValue < 0) {
+        return translate('Time cannot be negative.');
+    }
+
+    const maximumTime = parseFloat(element.businessObject.maximumTime);
+    if (!isNaN(maximumTime) && newValue >= maximumTime) {
+      return translate('Must be less than Maximum time.');
+    }
+    return null;
+  };
+
+  const onBlur = () => {
+    const minValue = parseFloat(element.businessObject.minimumTime);
+    const maxValue = parseFloat(element.businessObject.maximumTime);
+
+    if (!isNaN(minValue) && !isNaN(maxValue)) {
+      if (minValue >= maxValue) {
+        setTimeout(() => {
+          alert(translate('Minimum time must be less than Maximum time.'));
+        }, 0);
+      }
+    }
   };
 
   return html`<${TextFieldEntry}
@@ -371,6 +415,8 @@ function minimumTimeFunction(props) {
     getValue=${getValue}
     setValue=${setValue}
     debounce=${debounce}
+    validate=${validate}
+    onBlur=${onBlur}
     tooltip=${translate('Enter the minimum time.')} 
   />`;
 }
