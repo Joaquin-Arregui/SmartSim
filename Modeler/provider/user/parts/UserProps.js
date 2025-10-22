@@ -1,6 +1,11 @@
-import { html } from 'htm/preact';
+import { h } from '@bpmn-io/properties-panel/preact';
+import { useEffect } from '@bpmn-io/properties-panel/preact/hooks';
+import htm from 'htm';
+
 import { useService } from 'bpmn-js-properties-panel';
-import { TextFieldEntry, SelectEntry  } from '@bpmn-io/properties-panel';
+import { TextFieldEntry, SelectEntry } from '@bpmn-io/properties-panel';
+
+const html = htm.bind(h);
 
 export default function(element) {
   const loopParameterValue =
@@ -279,7 +284,7 @@ function maximumTimeFunction(props) {
     if (safeValue.trim() === '') {
       valueToSave = undefined; 
     } else if (isNaN(newValue)) {
-      return;
+      return; 
     } else {
       valueToSave = newValue;
     }
@@ -311,18 +316,18 @@ function maximumTimeFunction(props) {
     return null;
   };
 
-  const onBlur = () => {
-    const minValue = parseFloat(element.businessObject.minimumTime);
-    const maxValue = parseFloat(element.businessObject.maximumTime);
+  useEffect(() => {
+    return () => {
+      const minValue = parseFloat(element.businessObject.minimumTime);
+      const maxValue = parseFloat(element.businessObject.maximumTime);
 
-    if (!isNaN(minValue) && !isNaN(maxValue)) {
-      if (minValue >= maxValue) {
-        setTimeout(() => {
+      if (!isNaN(minValue) && !isNaN(maxValue)) {
+        if (minValue >= maxValue) {
           alert(translate('Maximum time must be greater than Minimum time.'));
-        }, 0);
+        }
       }
-    }
-  };
+    };
+  }, [element, translate]); 
 
   return html`<${TextFieldEntry}
     id=${id}
@@ -332,7 +337,6 @@ function maximumTimeFunction(props) {
     setValue=${setValue}
     debounce=${debounce}
     validate=${validate}
-    onBlur=${onBlur}
     tooltip=${translate('Enter the maximum time.')} 
   />`;
 }
@@ -361,9 +365,9 @@ function minimumTimeFunction(props) {
     const newValue = parseFloat(safeValue);
 
     if (safeValue.trim() === '') {
-      valueToSave = undefined;
+      valueToSave = undefined; 
     } else if (isNaN(newValue)) {
-      return;
+      return; 
     } else {
       valueToSave = newValue;
     }
@@ -376,7 +380,7 @@ function minimumTimeFunction(props) {
   const validate = (value) => {
     const safeValue = value || '';
     if (safeValue.trim() === '') {
-      return null;
+      return null; 
     }
     
     const newValue = parseFloat(safeValue);
@@ -392,21 +396,21 @@ function minimumTimeFunction(props) {
     if (!isNaN(maximumTime) && newValue >= maximumTime) {
       return translate('Must be less than Maximum time.');
     }
-    return null;
+    return null; 
   };
 
-  const onBlur = () => {
-    const minValue = parseFloat(element.businessObject.minimumTime);
-    const maxValue = parseFloat(element.businessObject.maximumTime);
+  useEffect(() => {
+    return () => {
+      const minValue = parseFloat(element.businessObject.minimumTime);
+      const maxValue = parseFloat(element.businessObject.maximumTime);
 
-    if (!isNaN(minValue) && !isNaN(maxValue)) {
-      if (minValue >= maxValue) {
-        setTimeout(() => {
+      if (!isNaN(minValue) && !isNaN(maxValue)) {
+        if (minValue >= maxValue) {
           alert(translate('Minimum time must be less than Maximum time.'));
-        }, 0);
+        }
       }
-    }
-  };
+    };
+  }, [element, translate]);
 
   return html`<${TextFieldEntry}
     id=${id}
@@ -416,7 +420,6 @@ function minimumTimeFunction(props) {
     setValue=${setValue}
     debounce=${debounce}
     validate=${validate}
-    onBlur=${onBlur}
     tooltip=${translate('Enter the minimum time.')} 
   />`;
 }
@@ -428,7 +431,6 @@ function SelectOptionFunction(props) {
   const translate = useService('translate');
   const elementRegistry = useService('elementRegistry');
 
-  // Obtener el valor actual de loopParameter
   const getValue = () => {
     if (!element || !element.businessObject) {
       return '<none>';
@@ -436,25 +438,21 @@ function SelectOptionFunction(props) {
     return element.businessObject.loopParameter || '<none>';
   };
 
-  // Sincronizar loopParameter entre SendTask y ReceiveTask
   const synchronizeTasks = (value) => {
     const bo = element.businessObject;
 
-    // Verificar si el elemento es SendTask o ReceiveTask
     const isSendOrReceive = bo.$type === 'bpmn:SendTask' || bo.$type === 'bpmn:ReceiveTask';
     if (!isSendOrReceive) {
       return;
     }
 
-    const definitions = bo.$parent.$parent; // Obtener las definiciones globales
+    const definitions = bo.$parent.$parent;
 
-    // Buscar la colaboración y los messageFlows
     const collaboration = definitions.rootElements.find(e => e.$type === 'bpmn:Collaboration');
     if (!collaboration || !collaboration.messageFlows) {
       return;
     }
 
-    // Encontrar el flujo relacionado con la tarea actual
     const relatedFlow = collaboration.messageFlows.find(flow =>
       flow.sourceRef === bo || flow.targetRef === bo
     );
@@ -462,46 +460,38 @@ function SelectOptionFunction(props) {
       return;
     }
 
-    // Identificar el otro lado del flujo (sourceRef o targetRef)
     const otherSide = relatedFlow.sourceRef === bo
       ? relatedFlow.targetRef
       : relatedFlow.sourceRef;
 
-    // Verificar si el otro lado también es SendTask o ReceiveTask
     const otherIsSendOrReceive =
       otherSide.$type === 'bpmn:SendTask' || otherSide.$type === 'bpmn:ReceiveTask';
     if (!otherIsSendOrReceive) {
       return;
     }
 
-    // Buscar el elemento en el registro
     const otherElement = elementRegistry.get(otherSide.id);
     if (!otherElement) {
       return;
     }
 
-    // Actualizar el loopParameter del otro elemento
     modeling.updateProperties(otherElement, {
       loopParameter: value,
     });
   };
 
-  // Actualizar el valor de loopParameter en el businessObject y sincronizar
   const setValue = (value) => {
     if (!element || !element.businessObject) {
       return;
     }
 
-    // Actualizar la tarea actual
     modeling.updateProperties(element, {
       loopParameter: value,
     });
 
-    // Sincronizar con la tarea relacionada
     synchronizeTasks(value);
   };
 
-  // Opciones del desplegable
   const getOptions = () => [
     { value: '<none>', label: translate('<none>') },
     { value: 'Time', label: translate('Time') },
@@ -537,25 +527,21 @@ function IntegerParameterEntry(props) {
     return element.businessObject.AdditionalIntegerParameter || '';
   };
 
-  // Sincronizar el valor entre SendTask y ReceiveTask
   const synchronizeAdditionalIntegerParameter = (value) => {
     const bo = element.businessObject;
 
-    // Verificar si el elemento es SendTask o ReceiveTask
     const isSendOrReceive = bo.$type === 'bpmn:SendTask' || bo.$type === 'bpmn:ReceiveTask';
     if (!isSendOrReceive) {
       return;
     }
 
-    const definitions = bo.$parent.$parent; // Obtener las definiciones globales
+    const definitions = bo.$parent.$parent;
 
-    // Buscar la colaboración y los messageFlows
     const collaboration = definitions.rootElements.find(e => e.$type === 'bpmn:Collaboration');
     if (!collaboration || !collaboration.messageFlows) {
       return;
     }
 
-    // Encontrar el flujo relacionado con la tarea actual
     const relatedFlow = collaboration.messageFlows.find(flow =>
       flow.sourceRef === bo || flow.targetRef === bo
     );
@@ -563,25 +549,21 @@ function IntegerParameterEntry(props) {
       return;
     }
 
-    // Identificar el otro lado del flujo (sourceRef o targetRef)
     const otherSide = relatedFlow.sourceRef === bo
       ? relatedFlow.targetRef
       : relatedFlow.sourceRef;
 
-    // Verificar si el otro lado también es SendTask o ReceiveTask
     const otherIsSendOrReceive =
       otherSide.$type === 'bpmn:SendTask' || otherSide.$type === 'bpmn:ReceiveTask';
     if (!otherIsSendOrReceive) {
       return;
     }
 
-    // Buscar el elemento en el registro
     const otherElement = elementRegistry.get(otherSide.id);
     if (!otherElement) {
       return;
     }
 
-    // Actualizar el valor de AdditionalIntegerParameter en el otro elemento
     modeling.updateProperties(otherElement, {
       AdditionalIntegerParameter: value,
     });
@@ -598,12 +580,10 @@ function IntegerParameterEntry(props) {
       return;
     }
 
-    // Actualizar la propiedad en la tarea actual
     modeling.updateProperties(element, {
       AdditionalIntegerParameter: parsedValue,
     });
 
-    // Sincronizar con la tarea relacionada
     synchronizeAdditionalIntegerParameter(parsedValue);
   };
 
@@ -618,7 +598,6 @@ function IntegerParameterEntry(props) {
   />`;
 }
 
-// Funciones auxiliares
 function isSelectEntryEdited(element) {
   if (!element || !element.businessObject) {
     return false;
@@ -634,12 +613,10 @@ function isListOfStringEntryEdited(element) {
 
   const userTaskValues = element.businessObject.UserTask;
 
-  // Verificamos que UserTask es un array
   if (!Array.isArray(userTaskValues)) {
     return false;
   }
 
-  // Retornamos true si al menos un elemento en la lista no es un string vacío
   return userTaskValues.some(value => typeof value === 'string' && value !== '');
 }
 
