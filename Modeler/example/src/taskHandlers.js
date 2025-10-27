@@ -1,3 +1,4 @@
+//taskHandlers.js
 const axios = require('axios');
 
 function getAllRelevantTasks(bpmnModeler) {
@@ -16,6 +17,8 @@ function getAllRelevantTasks(bpmnModeler) {
         || a['isScheduler'] === 'true'
         || String(bo.$type || '').toLowerCase() === 'custom:scheduler';
   };
+
+  const elementTypeOf = (el) => (el?.businessObject?.$type || el?.type || '');
 
   const id_model = Array.isArray(definitions.diagrams) && definitions.diagrams[0]?.id
     ? definitions.diagrams[0].id
@@ -196,6 +199,46 @@ function getAllRelevantTasks(bpmnModeler) {
       subElement   = tgtId || 'No Sub Element';
       superElement = srcId ? [srcId] : 'No Super Element';
 
+        } else if (t0 === 'bpmn:SendTask') {
+      const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
+      const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
+
+      const inIds = rawIncoming
+        .map(f => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
+        .filter(Boolean);
+
+      let finalInIds = inIds;
+      if (!finalInIds.length) {
+        const thisId = safeId(e) || safeId(bo);
+        const allFlows = allElems.filter(x => {
+          const tp = x?.type || x?.businessObject?.$type || '';
+          return tp === 'bpmn:SequenceFlow' || tp === 'bpmn:MessageFlow';
+        });
+
+        finalInIds = allFlows
+          .filter(f => safeId(f?.businessObject?.targetRef || f?.target) === thisId)
+          .map(f => safeId(f?.businessObject?.sourceRef || f?.source))
+          .filter(Boolean);
+      }
+
+      const outgoingMessageFlows = rawOutgoing.filter(flowEl => {
+        const fType = elementTypeOf(flowEl);
+        return fType === 'bpmn:MessageFlow';
+      });
+
+      const outIdsOnlyMessageTargets = outgoingMessageFlows
+        .map(f => safeId(f?.targetRef || f?.target || f?.businessObject?.targetRef))
+        .filter(Boolean);
+
+      subTasks = outIdsOnlyMessageTargets;
+      subElement = outIdsOnlyMessageTargets.length
+        ? outIdsOnlyMessageTargets.join(', ')
+        : 'No Sub Element';
+
+      superElement = finalInIds.length
+        ? finalInIds
+        : 'No Super Element';
+
     } else {
       const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
       const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
@@ -246,7 +289,7 @@ function getAllRelevantTasks(bpmnModeler) {
         if (inferredOut.length) outIds = inferredOut;
       }
 
-      subTasks   = outIds;
+      subTasks = outIds;
       subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
       superElement = inIds.length ? inIds : 'No Super Element';
     }
