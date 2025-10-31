@@ -18,7 +18,7 @@ function getAllRelevantTasks(bpmnModeler) {
         || String(bo.$type || '').toLowerCase() === 'custom:scheduler';
   };
 
-  const elementTypeOf = (el) => (el?.businessObject?.$type || el?.$type || el?.type || '');
+  const elementTypeOf = (el) => (el?.businessObject?.$type || el?.type || '');
 
   const id_model = Array.isArray(definitions.diagrams) && definitions.diagrams[0]?.id
     ? definitions.diagrams[0].id
@@ -222,10 +222,7 @@ function getAllRelevantTasks(bpmnModeler) {
       .filter(Boolean);
   }
 
-const seqOutgoing = rawOutgoing.filter(flowEl => {
-  const fType = elementTypeOf(flowEl);
-  return fType === 'bpmn:SequenceFlow';
-});
+const seqOutgoing = rawOutgoing.filter(flowEl => elementTypeOf(flowEl) === 'bpmn:SequenceFlow');
 
 
   let seqTargets = seqOutgoing
@@ -256,59 +253,66 @@ const seqOutgoing = rawOutgoing.filter(flowEl => {
   subElement  = seqTargets.length ? seqTargets.join(', ') : 'No Sub Element';
   superElement= finalInIds.length ? finalInIds : 'No Super Element';
     } else {
-      const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
-      const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
+  const rawOutgoing = arr(bo.outgoing).length ? arr(bo.outgoing) : arr(e.outgoing);
+  const rawIncoming = arr(bo.incoming).length ? arr(bo.incoming) : arr(e.incoming);
 
-      let outIds = rawOutgoing
-        .map(f => safeId(f?.targetRef || f?.target || f?.businessObject?.targetRef))
+  // --- SOLO SequenceFlow ---
+  const seqOutgoing = rawOutgoing.filter(f => elementTypeOf(f) === 'bpmn:SequenceFlow');
+  const seqIncoming = rawIncoming.filter(f => elementTypeOf(f) === 'bpmn:SequenceFlow');
+
+  let outIds = seqOutgoing
+    .map(f => safeId(f?.targetRef || f?.target || f?.businessObject?.targetRef))
+    .filter(Boolean);
+
+  let inIds = seqIncoming
+    .map(f => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
+    .filter(Boolean);
+
+  // Fallbacks solo con SequenceFlow
+  if (!outIds.length || !inIds.length) {
+    const thisId = safeId(e) || safeId(bo);
+
+    // Busca únicamente sequenceFlows en el diagrama
+    const allSeqFlows = allElems.filter(x => (x?.type || x?.businessObject?.$type) === 'bpmn:SequenceFlow');
+
+    if (!outIds.length && thisId) {
+      outIds = allSeqFlows
+        .filter(f => safeId(f?.businessObject?.sourceRef || f?.source) === thisId)
+        .map(f => safeId(f?.businessObject?.targetRef || f?.target))
         .filter(Boolean);
-
-      let inIds = rawIncoming
-        .map(f => safeId(f?.sourceRef || f?.source || f?.businessObject?.sourceRef))
-        .filter(Boolean);
-
-      if (!outIds.length || !inIds.length) {
-        const thisId = safeId(e) || safeId(bo);
-        const allFlows = allElems.filter(x => {
-          const tp = x?.type || x?.businessObject?.$type || '';
-          return tp === 'bpmn:SequenceFlow' || tp === 'bpmn:MessageFlow';
-        });
-
-        if (!outIds.length) {
-          outIds = allFlows
-            .filter(f => safeId(f?.businessObject?.sourceRef || f?.source) === thisId)
-            .map(f => safeId(f?.businessObject?.targetRef || f?.target))
-            .filter(Boolean);
-        }
-
-        if (!inIds.length) {
-          inIds = allFlows
-            .filter(f => safeId(f?.businessObject?.targetRef || f?.target) === thisId)
-            .map(f => safeId(f?.businessObject?.sourceRef || f?.source))
-            .filter(Boolean);
-        }
-      }
-
-      if (!outIds.length && Array.isArray(e.outgoing) && e.outgoing.length) {
-        const inferredOut = [];
-        e.outgoing.forEach(flow => {
-          if (!flow || !Array.isArray(flow.waypoints) || !flow.waypoints.length) return;
-          const last = flow.waypoints[flow.waypoints.length - 1];
-          const hit = allElems.find(el => {
-            if (!isFlowNodeCandidate(el)) return false;
-            const b = getBounds(el);
-            return pointIn(last, b);
-          });
-          const hid = safeId(hit);
-          if (hid) inferredOut.push(hid);
-        });
-        if (inferredOut.length) outIds = inferredOut;
-      }
-
-      subTasks = outIds;
-      subElement = outIds.length ? outIds.join(', ') : 'No Sub Element';
-      superElement = inIds.length ? inIds : 'No Super Element';
     }
+
+    if (!inIds.length && thisId) {
+      inIds = allSeqFlows
+        .filter(f => safeId(f?.businessObject?.targetRef || f?.target) === thisId)
+        .map(f => safeId(f?.businessObject?.sourceRef || f?.source))
+        .filter(Boolean);
+    }
+  }
+
+  // Fallback geométrico, otra vez SOLO para SequenceFlow
+  if (!outIds.length && Array.isArray(e.outgoing) && e.outgoing.length) {
+    const inferredOut = [];
+    e.outgoing.forEach(flow => {
+      if (elementTypeOf(flow) !== 'bpmn:SequenceFlow') return;
+      if (!Array.isArray(flow.waypoints) || !flow.waypoints.length) return;
+      const last = flow.waypoints[flow.waypoints.length - 1];
+      const hit = allElems.find(el => {
+        if (!isFlowNodeCandidate(el)) return false;
+        const b = getBounds(el);
+        return pointIn(last, b);
+      });
+      const hid = safeId(hit);
+      if (hid) inferredOut.push(hid);
+    });
+    if (inferredOut.length) outIds = inferredOut;
+  }
+
+  subTasks    = outIds;                                       // <- SOLO SequenceFlow
+  subElement  = outIds.length ? outIds.join(', ') : 'No Sub Element';
+  superElement= inIds.length ? inIds : 'No Super Element';
+}
+
 
     // Otros campos
     const isServiceTask = t0 === 'bpmn:ServiceTask';
