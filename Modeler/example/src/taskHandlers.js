@@ -18,7 +18,7 @@ function getAllRelevantTasks(bpmnModeler) {
         || String(bo.$type || '').toLowerCase() === 'custom:scheduler';
   };
 
-  const elementTypeOf = (el) => (el?.businessObject?.$type || el?.type || '');
+  const elementTypeOf = (el) => (el?.businessObject?.$type || el?.$type || el?.type || '');
 
   const id_model = Array.isArray(definitions.diagrams) && definitions.diagrams[0]?.id
     ? definitions.diagrams[0].id
@@ -369,10 +369,32 @@ const seqOutgoing = rawOutgoing.filter(flowEl => elementTypeOf(flowEl) === 'bpmn
       userWithoutRole = arr(bo.userWithoutRole).map((r) => String(r).trim()).filter(Boolean);
 
     } else if (isLane) {
-      userWithoutRole = arr(bo.userWithoutRole).map((r) => String(r).trim()).filter(Boolean);
-      containedElements = ids(bo.flowNodeRef);
+  userWithoutRole = arr(bo.userWithoutRole).map((r) => String(r).trim()).filter(Boolean);
 
-    } else if (isProcess) {
+  // 1) Primero, lo que venga en flowNodeRef
+  let laneContained = ids(bo.flowNodeRef);
+
+  // 2) Si está vacío, fallback por geometría: centro del nodo dentro del rectángulo del lane
+  if (!laneContained.length) {
+    const lb = getBounds(e); // bounds del lane (shape)
+    if (lb) {
+      laneContained = allElems
+        .filter(el => isFlowNodeCandidate(el))                // solo nodos (no flows/labels/lanes/participants)
+        .map(el => ({ el, b: getBounds(el) }))
+        .filter(o => o.b)
+        .filter(o => {
+          const cx = o.b.x + o.b.width / 2;
+          const cy = o.b.y + o.b.height / 2;
+          // tolerancia 0 para que no “robe” de otros lanes
+          return pointIn({ x: cx, y: cy }, lb, 0);
+        })
+        .map(o => safeId(o.el))
+        .filter(Boolean);
+    }
+  }
+
+  containedElements = laneContained;
+} else if (isProcess) {
       if (bo.instance !== undefined) instance = bo.instance;
 
       if (Array.isArray(bo.userWithRole)) {
